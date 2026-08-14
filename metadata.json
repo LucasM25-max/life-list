@@ -1,0 +1,6 @@
+{
+  "name": "Life",
+  "description": "A life list tracker for zoo and wildlife enthusiasts, powered by Catalogue of Life taxonomy.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
