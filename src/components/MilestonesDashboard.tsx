@@ -29,7 +29,7 @@ import {
   Scan, 
   Tag, 
   Search,
-  Filter
+  Check
 } from 'lucide-react';
 
 interface MilestonesDashboardProps {
@@ -52,13 +52,13 @@ export const MilestonesDashboard: React.FC<MilestonesDashboardProps> = ({
   const overallPercentage = Math.round((completedCount / (milestones.length || 1)) * 100);
 
   const categories: { id: CategoryFilter; label: string; count: number }[] = [
-    { id: 'all', label: 'All Milestones', count: milestones.length },
-    { id: 'count', label: 'Scale & Totals', count: milestones.filter(m => m.category === 'count').length },
-    { id: 'diversity', label: 'Wild & Reserves', count: milestones.filter(m => m.category === 'diversity').length },
-    { id: 'venue', label: 'Living Collections', count: milestones.filter(m => m.category === 'venue').length },
-    { id: 'clade', label: 'Taxonomic Clades', count: milestones.filter(m => m.category === 'clade').length },
-    { id: 'guilds', label: 'Specialist Guilds', count: milestones.filter(m => m.category === 'guilds').length },
-    { id: 'fieldcraft', label: 'Field Craft & Media', count: milestones.filter(m => m.category === 'fieldcraft').length }
+    { id: 'all', label: 'All', count: milestones.length },
+    { id: 'count', label: 'Totals', count: milestones.filter(m => m.category === 'count').length },
+    { id: 'diversity', label: 'Wild', count: milestones.filter(m => m.category === 'diversity').length },
+    { id: 'venue', label: 'Collections', count: milestones.filter(m => m.category === 'venue').length },
+    { id: 'clade', label: 'Taxonomy', count: milestones.filter(m => m.category === 'clade').length },
+    { id: 'guilds', label: 'Specialist', count: milestones.filter(m => m.category === 'guilds').length },
+    { id: 'fieldcraft', label: 'Field Craft', count: milestones.filter(m => m.category === 'fieldcraft').length }
   ];
 
   const filteredMilestones = useMemo(() => {
@@ -118,193 +118,148 @@ export const MilestonesDashboard: React.FC<MilestonesDashboardProps> = ({
     }
   };
 
-  const getCategoryBadge = (category: string) => {
-    switch (category) {
-      case 'count': return { label: 'Scale', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
-      case 'diversity': return { label: 'Wild', color: 'bg-amber-50 text-amber-800 border-amber-200' };
-      case 'venue': return { label: 'Collections', color: 'bg-blue-50 text-blue-800 border-blue-200' };
-      case 'clade': return { label: 'Clade', color: 'bg-purple-50 text-purple-800 border-purple-200' };
-      case 'guilds': return { label: 'Guild', color: 'bg-orange-50 text-orange-800 border-orange-200' };
-      case 'fieldcraft': return { label: 'Field Craft', color: 'bg-teal-50 text-teal-800 border-teal-200' };
-      default: return { label: category, color: 'bg-stone-50 text-stone-700 border-stone-200' };
-    }
-  };
-
   return (
-    <div className="bg-white border border-[#e6dfd3] rounded-xl p-4 sm:p-5 shadow-xs space-y-4">
+    <div className="bg-white border border-[#e6dfd3] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
       {/* Header & Master Progress Tracker */}
       <div className="border-b border-[#f0eae0] pb-4 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#2e4a36]/10 text-[#2e4a36] flex items-center justify-center border border-[#2e4a36]/20">
-              <Trophy className="w-4 h-4 text-[#99582a]" />
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#2e4a36] flex items-center justify-center border border-[#ded6c9] shadow-2xs">
+              <Trophy className="w-5 h-5 text-[#99582a]" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#1f241d] font-serif-species tracking-wide">
-                Naturalist Milestones & Badges
+              <h2 className="text-base sm:text-lg font-bold text-[#1f241d] font-serif-species leading-tight">
+                Naturalist Milestones
               </h2>
-              <p className="text-[11px] text-[#6b7568]">
-                {milestones.length} achievements tracking lifetime diversity, wild expeditions, taxonomy, and field craft
+              <p className="text-xs text-[#6b7568]">
+                {milestones.length} achievements tracking lifetime diversity, wild expeditions, and taxonomy
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="bg-[#eef3ed] text-[#2e4a36] px-3 py-1 rounded-lg border border-[#cfddce] flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5" />
+            <div className="bg-[#eef3ed] text-[#2e4a36] px-3 py-1.5 rounded-xl border border-[#cfddce] flex items-center gap-2 shadow-2xs">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
               <span className="font-bold text-xs font-mono-tag">
-                {completedCount} of {milestones.length} Completed ({overallPercentage}%)
+                {completedCount} / {milestones.length} Unlocked ({overallPercentage}%)
               </span>
             </div>
           </div>
         </div>
 
-        {/* Master Progress Bar */}
-        <div className="w-full bg-[#f4efe6] h-2 rounded-full overflow-hidden border border-[#ded6c9]/60">
+        {/* Global Progress Bar */}
+        <div className="w-full bg-[#f0eae0] h-2 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-linear-to-r from-[#2e4a36] via-[#3b5e45] to-[#99582a] transition-all duration-700"
+            className="bg-linear-to-r from-[#2e4a36] to-emerald-500 h-full transition-all duration-500 rounded-full"
             style={{ width: `${overallPercentage}%` }}
           />
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="space-y-2.5">
+      {/* Category Pills & Search Controls */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
         {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-          {categories.map(cat => {
-            const isSelected = selectedCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer text-xs ${
-                  isSelected
-                    ? 'bg-[#2e4a36] text-white shadow-xs'
-                    : 'bg-[#faf9f6] text-[#576054] hover:bg-[#eee9e0] border border-[#e6dfd3]'
-                }`}
-              >
-                <span>{cat.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono-tag ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-[#e8e2d7] text-[#576054]'
-                }`}>
-                  {cat.count}
-                </span>
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-1 overflow-x-auto p-1 bg-[#f4efe6] rounded-xl border border-[#ded6c9]">
+          {categories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                selectedCategory === cat.id
+                  ? 'bg-white text-[#2e4a36] shadow-2xs font-bold'
+                  : 'text-[#6b7568] hover:text-[#1f241d]'
+              }`}
+            >
+              <span>{cat.label}</span>
+              <span className="text-[10px] ml-1 opacity-70 font-mono">({cat.count})</span>
+            </button>
+          ))}
         </div>
 
-        {/* Search & Status Quick Filter */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 text-xs pt-1">
-          {/* Search box */}
-          <div className="relative flex-1 max-w-sm">
-            <Search className="w-3.5 h-3.5 text-[#828d7e] absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Search & Status */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-[140px]">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#828d7e]" />
             <input
               type="text"
+              placeholder="Search badges..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search milestones..."
-              className="w-full pl-8 pr-3 py-1.5 bg-[#faf9f6] border border-[#d8d0c4] rounded-lg text-xs text-[#1f241d] focus:outline-none focus:ring-1 focus:ring-[#2e4a36] focus:bg-white"
+              className="w-full bg-[#fdfbf7] border border-[#d8d0c4] rounded-xl pl-8 pr-2.5 py-1 text-xs text-[#1f241d] focus:outline-none focus:ring-1 focus:ring-[#2e4a36]"
             />
           </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-[#828d7e] flex items-center gap-1">
-              <Filter className="w-3 h-3" /> Status:
-            </span>
-            {(['all', 'completed', 'in_progress', 'unstarted'] as StatusFilter[]).map(st => (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setSelectedStatus(st)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium capitalize transition-colors cursor-pointer ${
-                  selectedStatus === st
-                    ? 'bg-[#2e4a36]/15 text-[#2e4a36] font-bold border border-[#2e4a36]/30'
-                    : 'text-[#6b7568] hover:text-[#1f241d] hover:bg-[#f4efe6]'
-                }`}
-              >
-                {st.replace('_', ' ')}
-              </button>
-            ))}
-          </div>
+          <select
+            value={selectedStatus}
+            onChange={e => setSelectedStatus(e.target.value as StatusFilter)}
+            className="bg-[#fdfbf7] border border-[#d8d0c4] rounded-xl px-2.5 py-1 text-xs text-[#1f241d] focus:outline-none cursor-pointer"
+          >
+            <option value="all">All Status</option>
+            <option value="completed">Unlocked</option>
+            <option value="in_progress">In Progress</option>
+            <option value="unstarted">Unstarted</option>
+          </select>
         </div>
       </div>
 
-      {/* Milestones Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs pt-1">
+      {/* Grid of Milestone Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filteredMilestones.map(m => {
-          const pct = Math.round((m.progress / m.target) * 100);
-          const badge = getCategoryBadge(m.category);
-
+          const isDone = m.completed;
           return (
             <div
               key={m.id}
-              className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between ${
-                m.completed 
-                  ? 'bg-[#fafcf9] border-[#b8dabf] shadow-2xs ring-1 ring-[#2e4a36]/10' 
-                  : m.progress > 0
-                    ? 'bg-[#fcfbf9] border-[#e6dfd3] hover:border-[#cfc6b8]'
-                    : 'bg-[#faf9f6] border-[#eee9e0] opacity-75 hover:opacity-100'
+              className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
+                isDone
+                  ? 'bg-[#f7faf7] border-[#2e4a36]/30 shadow-2xs'
+                  : 'bg-[#faf8f4] border-[#e6dfd3] opacity-90'
               }`}
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
-                      m.completed 
-                        ? 'bg-[#eef3ed] border-[#c2ddc8]' 
-                        : m.progress > 0
-                          ? 'bg-[#f5ede2] border-[#e4d6c4]'
-                          : 'bg-[#f2ede4] border-[#e6dfd3]'
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+                      isDone
+                        ? 'bg-[#eef3ed] border-[#cfddce] text-[#2e4a36]'
+                        : 'bg-white border-[#ded6c9] text-[#828d7e]'
                     }`}>
-                      {renderIcon(m.iconName, m.completed)}
+                      {renderIcon(m.icon, isDone)}
                     </div>
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-xs sm:text-sm text-[#1f241d] font-serif-species truncate">
+
+                    <div>
+                      <h4 className="font-bold text-xs sm:text-sm text-[#1f241d] font-serif-species leading-tight">
                         {m.title}
-                      </h3>
-                      <span className={`text-[9px] uppercase font-mono-tag px-1.5 py-0.2 rounded border ${badge.color}`}>
-                        {badge.label}
-                      </span>
+                      </h4>
+                      <p className="text-[11px] text-[#6b7568] mt-0.5 line-clamp-2">
+                        {m.subtitle}
+                      </p>
                     </div>
                   </div>
 
-                  {m.completed && (
-                    <span className="flex items-center gap-1 bg-[#2e4a36] text-white text-[10px] font-mono-tag font-bold px-2 py-0.5 rounded-full shrink-0 shadow-2xs">
-                      <CheckCircle2 className="w-3 h-3 stroke-[2.5]" />
-                      Done
+                  {isDone ? (
+                    <span className="w-5 h-5 rounded-full bg-[#2e4a36] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono-tag font-bold text-[#828d7e] shrink-0 bg-white px-2 py-0.5 rounded-full border border-[#ded6c9]">
+                      {m.currentValue}/{m.targetValue}
                     </span>
                   )}
                 </div>
-
-                <p className="text-[11px] text-[#576054] leading-relaxed mb-3">
-                  {m.subtitle}
-                </p>
               </div>
 
-              {/* Progress bar and metrics */}
-              <div className="pt-2 border-t border-[#f0eae0]">
-                <div className="flex items-center justify-between text-[10px] font-mono-tag text-[#6b7568] mb-1">
-                  <span className="font-semibold">
-                    {m.progress} / {m.target} {m.completed ? 'reached' : `(${m.target - m.progress} left)`}
-                  </span>
-                  <span className={`font-bold ${m.completed ? 'text-[#2e4a36]' : 'text-[#99582a]'}`}>
-                    {pct}%
-                  </span>
+              {/* Progress Bar inside Card */}
+              <div className="mt-2 pt-2 border-t border-[#eee7db]">
+                <div className="flex items-center justify-between text-[10px] text-[#828d7e] mb-1 font-mono-tag">
+                  <span>{isDone ? 'COMPLETED' : `${Math.round(m.progress * 100)}% COMPLETE`}</span>
+                  <span>{m.currentValue} / {m.targetValue}</span>
                 </div>
-                <div className="w-full h-2 bg-[#eee9e0] rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-500 rounded-full ${
-                      m.completed 
-                        ? 'bg-[#2e4a36]' 
-                        : m.progress > 0
-                          ? 'bg-[#99582a]'
-                          : 'bg-transparent'
+                <div className="w-full bg-[#e8e2d5] h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      isDone ? 'bg-[#2e4a36]' : 'bg-[#99582a]'
                     }`}
-                    style={{ width: `${Math.min(100, pct)}%` }}
+                    style={{ width: `${Math.min(100, Math.round(m.progress * 100))}%` }}
                   />
                 </div>
               </div>
@@ -312,26 +267,6 @@ export const MilestonesDashboard: React.FC<MilestonesDashboardProps> = ({
           );
         })}
       </div>
-
-      {filteredMilestones.length === 0 && (
-        <div className="p-8 text-center bg-[#faf9f6] rounded-xl border border-dashed border-[#d8d0c4] space-y-2">
-          <Trophy className="w-8 h-8 text-[#a99e8d] mx-auto" />
-          <p className="text-xs font-semibold text-[#576054]">
-            No milestones match your current filters.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedCategory('all');
-              setSelectedStatus('all');
-              setSearchQuery('');
-            }}
-            className="text-xs text-[#2e4a36] font-bold underline cursor-pointer"
-          >
-            Reset Filters
-          </button>
-        </div>
-      )}
     </div>
   );
 };
