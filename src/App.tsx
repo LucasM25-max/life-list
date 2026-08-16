@@ -2,11 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Observation, LifeListFilter, EnclosureRecord, TripRecord, VenueType, WildStatus } from './types';
 import { 
   recalculateLifers,
-  deduplicateObservations
+  deduplicateObservations,
+  loadObservations,
+  loadTrips,
+  loadEnclosures,
+  loadActiveTrip,
+  saveObservations,
+  saveTrips,
+  saveEnclosures,
+  saveActiveTrip
 } from './utils/storage';
-import { auth, onAuthStateChanged, User } from './utils/firebase';
-import { loadFromFirestore, syncObservationsToFirestore, syncTripsToFirestore, syncEnclosuresToFirestore } from './utils/firebaseSync';
-import { LoginScreen } from './components/LoginScreen';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { ActiveTripBar } from './components/ActiveTripBar';
@@ -27,38 +32,10 @@ import { MobileSightingsFeed } from './components/MobileSightingsFeed';
 import { Trophy } from 'lucide-react';
 
 export default function App() {
-  const [user, setUser] = useState<User | null | undefined>(undefined); // undefined means loading
-  const [observations, setObservations] = useState<Observation[]>([]);
-  const [enclosures, setEnclosures] = useState<EnclosureRecord[]>([]);
-  const [trips, setTrips] = useState<TripRecord[]>([]);
-  const [activeTrip, setActiveTrip] = useState<TripRecord | null>(null);
-
-  // Auth Listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // Load data from firestore
-        try {
-          const data = await loadFromFirestore(currentUser.uid);
-          setObservations(data.observations);
-          setTrips(data.trips);
-          setEnclosures(data.enclosures);
-          // Find active trip if any
-          const active = data.trips.find(t => t.status === 'active');
-          setActiveTrip(active || null);
-        } catch (error) {
-          console.error("Failed to load data from Firestore", error);
-        }
-      } else {
-        setObservations([]);
-        setTrips([]);
-        setEnclosures([]);
-        setActiveTrip(null);
-      }
-    });
-    return unsubscribe;
-  }, []);
+  const [observations, setObservations] = useState<Observation[]>(() => loadObservations());
+  const [enclosures, setEnclosures] = useState<EnclosureRecord[]>(() => loadEnclosures());
+  const [trips, setTrips] = useState<TripRecord[]>(() => loadTrips());
+  const [activeTrip, setActiveTrip] = useState<TripRecord | null>(() => loadActiveTrip());
 
   // Trip Modals state
   const [isStartTripOpen, setIsStartTripOpen] = useState(false);
@@ -88,31 +65,29 @@ export default function App() {
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
   const [selectedSpeciesDossier, setSelectedSpeciesDossier] = useState<string | null>(null);
 
-  // Synchronize observations to Firestore
+  // Synchronize observations to local storage
   useEffect(() => {
-    if (user && observations.length > 0) {
-      syncObservationsToFirestore(user.uid, observations).catch(console.error);
-    }
-  }, [observations, user]);
+    saveObservations(observations);
+  }, [observations]);
 
-  // Synchronize enclosures to Firestore
+  // Synchronize enclosures to local storage
   useEffect(() => {
-    if (user && enclosures.length > 0) {
-      syncEnclosuresToFirestore(user.uid, enclosures).catch(console.error);
-    }
-  }, [enclosures, user]);
+    saveEnclosures(enclosures);
+  }, [enclosures]);
 
-  // Synchronize trips to Firestore
+  // Synchronize trips to local storage
   useEffect(() => {
-    if (user && trips.length > 0) {
-      syncTripsToFirestore(user.uid, trips).catch(console.error);
-    }
-  }, [trips, user]);
+    saveTrips(trips);
+  }, [trips]);
+
+  // Synchronize active trip to local storage
+  useEffect(() => {
+    saveActiveTrip(activeTrip);
+  }, [activeTrip]);
 
   // Global Keyboard Shortcuts (⌘K for single add, ⌘Q for single quick log, ⌘S for scan sign)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!user) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setEditingObservation(null);
@@ -132,7 +107,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [user]);
+  }, []);
 
   // Filter & Sort computation
   const filteredObservations = useMemo(() => {
@@ -456,14 +431,6 @@ export default function App() {
     ...observations.map(o => o.venueName.trim()),
     ...enclosures.map(e => e.venueName.trim())
   ].filter(Boolean)));
-
-  if (user === undefined) {
-    return <div className="min-h-[100dvh] flex items-center justify-center bg-[#fdfbf7]">Loading...</div>;
-  }
-
-  if (!user) {
-    return <LoginScreen />;
-  }
 
   return (
     <div className="min-h-screen bg-[#f9f8f5] flex flex-col selection:bg-[#2e4a36] selection:text-white pb-20 md:pb-8">

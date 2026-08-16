@@ -1,7 +1,6 @@
 import React from 'react';
 import { Observation, LifeListFilter, TripRecord } from '../types';
 import appLogo from '../assets/images/bold_app_logo_1786709233012.jpg';
-import { signOut } from '../utils/firebase';
 import { 
   Plus, 
   Table, 
@@ -184,14 +183,6 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </button>
 
-          {/* Sign Out */}
-          <button
-            onClick={() => signOut()}
-            title="Sign out of your account"
-            className="hidden sm:inline-flex items-center justify-center p-2 text-[#828d7e] hover:text-[#1f241d] hover:bg-[#f4efe6] rounded-xl transition-colors cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </header>

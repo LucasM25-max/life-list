@@ -28,7 +28,7 @@ app.post("/api/species-summary", async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: `Provide exactly 5 bullet points of the top 5 most interesting facts about the species "${vernacularName}" (${scientificName}). Focus on cool and interesting facts unique to the species. Use a dash (-) for each bullet point. Do not include any other introductory or concluding text.`,
       config: {
         systemInstruction: "You are an expert wildlife communicator creating fun, engaging dossiers for a nature app. Output only the requested bullet points.",

@@ -1,6 +1,5 @@
 import React from 'react';
 import { LifeListFilter, Observation } from '../types';
-import { signOut } from '../utils/firebase';
 import { 
   X, 
   Download, 
@@ -207,19 +206,6 @@ export const MobileMoreDrawer: React.FC<MobileMoreDrawerProps> = ({
               <div className="flex items-center gap-2">
                 <Download className="w-4 h-4 text-[#2e4a36]" />
                 <span>Data Backup & Export</span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                onClose();
-                signOut();
-              }}
-              className="w-full flex items-center justify-between p-2.5 bg-white border border-[#e6dfd3] rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
               </div>
             </button>
           </div>
