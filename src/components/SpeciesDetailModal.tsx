@@ -100,8 +100,8 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
   const liferObs = speciesObs.find(o => o.isLifer) || speciesObs[speciesObs.length - 1];
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden animate-in fade-in duration-150">
-      <div className="flex flex-col w-full max-w-3xl mx-auto h-[100dvh]">
+    <div className="flex flex-col bg-white overflow-hidden animate-in fade-in duration-150 sm:rounded-2xl border border-[#e6dfd3] shadow-sm w-full mx-auto max-w-3xl flex-1 mb-6">
+      <div className="flex flex-col w-full h-full">
         {/* Header */}
         <div className="bg-[#f9f8f5] border-b border-[#e6dfd3] p-4 flex items-start justify-between shrink-0">
           <div className="flex items-start gap-3">

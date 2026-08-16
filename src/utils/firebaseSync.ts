@@ -19,7 +19,8 @@ export const syncObservationsToFirestore = async (userId: string, observations: 
   const batch = [];
   for (const obs of observations) {
     if (!obs.userId) obs.userId = userId;
-    batch.push(setDoc(doc(obsRef, obs.id), obs));
+    const cleanObs = JSON.parse(JSON.stringify(obs));
+    batch.push(setDoc(doc(obsRef, obs.id), cleanObs));
     cloudDocs.delete(obs.id);
   }
   
@@ -39,7 +40,8 @@ export const syncTripsToFirestore = async (userId: string, trips: TripRecord[]) 
   const batch = [];
   for (const trip of trips) {
     if (!trip.userId) trip.userId = userId;
-    batch.push(setDoc(doc(tripsRef, trip.id), trip));
+    const cleanTrip = JSON.parse(JSON.stringify(trip));
+    batch.push(setDoc(doc(tripsRef, trip.id), cleanTrip));
     cloudDocs.delete(trip.id);
   }
   
@@ -58,7 +60,8 @@ export const syncEnclosuresToFirestore = async (userId: string, enclosures: Encl
   const batch = [];
   for (const enc of enclosures) {
     if (!enc.userId) enc.userId = userId;
-    batch.push(setDoc(doc(encRef, enc.id), enc));
+    const cleanEnc = JSON.parse(JSON.stringify(enc));
+    batch.push(setDoc(doc(encRef, enc.id), cleanEnc));
     cloudDocs.delete(enc.id);
   }
   

@@ -660,8 +660,8 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#fcfbf9] overflow-hidden animate-in fade-in duration-150">
-      <div className="flex flex-col w-full max-w-3xl mx-auto h-[100dvh] text-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-[#fcfbf9] sm:bg-black/60 sm:backdrop-blur-xs transition-opacity">
+      <div className="flex flex-col w-full max-w-4xl mx-auto h-[100dvh] sm:h-[90vh] bg-[#fcfbf9] sm:rounded-2xl sm:shadow-2xl overflow-hidden animate-in fade-in sm:zoom-in-95 duration-200 text-xs">
         
         {/* Header */}
         <div className="bg-[#1b2b20] text-white px-3 py-2.5 flex items-center justify-between shrink-0">

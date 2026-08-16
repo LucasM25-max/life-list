@@ -33,8 +33,8 @@ export const ObservationDetailModal: React.FC<ObservationDetailModalProps> = ({
   const isWild = observation.wildStatus === 'wild';
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden animate-in fade-in duration-150">
-      <div className="flex flex-col w-full max-w-3xl mx-auto h-[100dvh] text-xs">
+    <div className="flex flex-col bg-white overflow-hidden animate-in fade-in duration-150 sm:rounded-2xl border border-[#e6dfd3] shadow-sm w-full mx-auto max-w-3xl flex-1 mb-6">
+      <div className="flex flex-col w-full h-full text-xs">
         {/* Header */}
         <div className="bg-[#faf8f4] border-b border-[#e6dfd3] p-4 sm:p-5 flex items-start justify-between shrink-0">
           <div>

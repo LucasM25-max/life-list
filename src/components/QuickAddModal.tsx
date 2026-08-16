@@ -333,8 +333,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden animate-in fade-in duration-150">
-      <div className="flex flex-col w-full max-w-3xl mx-auto h-[100dvh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-white sm:bg-black/60 sm:backdrop-blur-xs transition-opacity">
+      <div className="flex flex-col w-full max-w-3xl mx-auto h-[100dvh] sm:h-[85vh] bg-white sm:rounded-2xl sm:shadow-2xl overflow-hidden animate-in fade-in sm:zoom-in-95 duration-200">
         {/* Header */}
         <div className="bg-[#f9f8f5] border-b border-[#e6dfd3] px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">

@@ -512,76 +512,95 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-2.5 sm:py-4">
-        {/* Life List Ledger View (Table & Cards) */}
-        {filter.viewMode === 'compact_table' && (
-          <>
-            {/* Desktop / Tablet: Full Ledger Table */}
-            <div className="hidden md:block">
-              <CompactLedgerTable
-                observations={filteredObservations}
-                onSelectObservation={setSelectedObservation}
-                onEditObservation={handleEditObservation}
-                onDeleteObservation={handleDeleteObservation}
-                onViewTaxon={setSelectedSpeciesDossier}
-              />
-            </div>
-
-            {/* Mobile-optimized clean sightings feed */}
-            <div className="md:hidden">
-              <MobileSightingsFeed
-                observations={filteredObservations}
-                onSelectObservation={setSelectedObservation}
-                onEditObservation={handleEditObservation}
-                onDeleteObservation={handleDeleteObservation}
-                onViewTaxon={setSelectedSpeciesDossier}
-                onOpenQuickLog={() => handleOpenLogModal('walkthrough')}
-              />
-            </div>
-          </>
-        )}
-
-        {filter.viewMode === 'ledger_cards' && (
-          <CompactCardGrid
-            observations={filteredObservations}
-            onSelectObservation={setSelectedObservation}
-            onEditObservation={handleEditObservation}
-            onDeleteObservation={handleDeleteObservation}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-2.5 sm:py-4 flex flex-col">
+        {selectedObservation ? (
+          <ObservationDetailModal
+            observation={selectedObservation}
+            onClose={() => setSelectedObservation(null)}
+            onEdit={handleEditObservation}
+            onDelete={handleDeleteObservation}
             onViewTaxon={setSelectedSpeciesDossier}
           />
-        )}
-
-        {/* Tree of Life View */}
-        {filter.viewMode === 'taxonomy_tree' && (
-          <TaxonomyTreeView
-            observations={filteredObservations}
-            onSelectObservation={setSelectedObservation}
-            onViewTaxon={setSelectedSpeciesDossier}
-          />
-        )}
-
-        {/* Locations & Enclosures Interactive View */}
-        {filter.viewMode === 'venues_matrix' && (
-          <VenuesMatrix
+        ) : selectedSpeciesDossier ? (
+          <SpeciesDetailModal
+            scientificName={selectedSpeciesDossier}
             observations={observations}
-            enclosures={enclosures}
-            trips={trips}
-            activeTrip={activeTrip}
-            onFilterByVenue={handleFilterByVenue}
-            onOpenScanModal={(defaultVenue) => {
-              setFilter(prev => ({ ...prev, venue: defaultVenue || prev.venue }));
-              handleOpenLogModal('scan');
-            }}
-            onToggleSpeciesSeen={handleToggleSpeciesSeen}
-            onSelectSpeciesDossier={setSelectedSpeciesDossier}
+            onClose={() => setSelectedSpeciesDossier(null)}
             onSelectObservation={setSelectedObservation}
-            onStartTripAtVenue={handleStartTripAtVenue}
           />
-        )}
+        ) : (
+          <>
+            {/* Life List Ledger View (Table & Cards) */}
+            {filter.viewMode === 'compact_table' && (
+              <>
+                {/* Desktop / Tablet: Full Ledger Table */}
+                <div className="hidden md:block">
+                  <CompactLedgerTable
+                    observations={filteredObservations}
+                    onSelectObservation={setSelectedObservation}
+                    onEditObservation={handleEditObservation}
+                    onDeleteObservation={handleDeleteObservation}
+                    onViewTaxon={setSelectedSpeciesDossier}
+                  />
+                </div>
 
-        {/* Milestones / Field Achievements View */}
-        {filter.viewMode === 'milestones' && (
-          <MilestonesDashboard observations={observations} />
+                {/* Mobile-optimized clean sightings feed */}
+                <div className="md:hidden">
+                  <MobileSightingsFeed
+                    observations={filteredObservations}
+                    onSelectObservation={setSelectedObservation}
+                    onEditObservation={handleEditObservation}
+                    onDeleteObservation={handleDeleteObservation}
+                    onViewTaxon={setSelectedSpeciesDossier}
+                    onOpenQuickLog={() => handleOpenLogModal('walkthrough')}
+                  />
+                </div>
+              </>
+            )}
+
+            {filter.viewMode === 'ledger_cards' && (
+              <CompactCardGrid
+                observations={filteredObservations}
+                onSelectObservation={setSelectedObservation}
+                onEditObservation={handleEditObservation}
+                onDeleteObservation={handleDeleteObservation}
+                onViewTaxon={setSelectedSpeciesDossier}
+              />
+            )}
+
+            {/* Tree of Life View */}
+            {filter.viewMode === 'taxonomy_tree' && (
+              <TaxonomyTreeView
+                observations={filteredObservations}
+                onSelectObservation={setSelectedObservation}
+                onViewTaxon={setSelectedSpeciesDossier}
+              />
+            )}
+
+            {/* Locations & Enclosures Interactive View */}
+            {filter.viewMode === 'venues_matrix' && (
+              <VenuesMatrix
+                observations={observations}
+                enclosures={enclosures}
+                trips={trips}
+                activeTrip={activeTrip}
+                onFilterByVenue={handleFilterByVenue}
+                onOpenScanModal={(defaultVenue) => {
+                  setFilter(prev => ({ ...prev, venue: defaultVenue || prev.venue }));
+                  handleOpenLogModal('scan');
+                }}
+                onToggleSpeciesSeen={handleToggleSpeciesSeen}
+                onSelectSpeciesDossier={setSelectedSpeciesDossier}
+                onSelectObservation={setSelectedObservation}
+                onStartTripAtVenue={handleStartTripAtVenue}
+              />
+            )}
+
+            {/* Milestones / Field Achievements View */}
+            {filter.viewMode === 'milestones' && (
+              <MilestonesDashboard observations={observations} />
+            )}
+          </>
         )}
       </main>
 
@@ -645,23 +664,6 @@ export default function App() {
         onSaveSingle={handleSaveObservation}
         onSaveBatch={handleSaveBatch}
         onSaveEnclosureAndObservations={handleSaveEnclosureAndObservations}
-      />
-
-      {/* Observation Dossier & Detail Modal */}
-      <ObservationDetailModal
-        observation={selectedObservation}
-        onClose={() => setSelectedObservation(null)}
-        onEdit={handleEditObservation}
-        onDelete={handleDeleteObservation}
-        onViewTaxon={setSelectedSpeciesDossier}
-      />
-
-      {/* Species Deep Dossier Modal */}
-      <SpeciesDetailModal
-        scientificName={selectedSpeciesDossier}
-        observations={observations}
-        onClose={() => setSelectedSpeciesDossier(null)}
-        onSelectObservation={setSelectedObservation}
       />
 
       {/* Data Backup & Export/Import Modal */}
