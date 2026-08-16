@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Observation } from '../types';
+import { SpeciesImage } from './SpeciesImage';
 import { 
   X, 
   MapPin, 
@@ -98,29 +99,28 @@ export const ObservationDetailModal: React.FC<ObservationDetailModalProps> = ({
 
         {/* Content */}
         <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-3.5">
-          {/* Captured Field Photo */}
-          {observation.photoUrl && (
-            <div className="rounded-2xl overflow-hidden border border-[#d8d0c4] bg-black relative group shadow-sm">
-              <img
-                src={observation.photoUrl}
-                alt={observation.vernacularName || observation.scientificName}
-                className="w-full max-h-64 object-cover cursor-pointer transition-transform duration-300 group-hover:scale-[1.02]"
-                onClick={() => setIsPhotoExpanded(true)}
-              />
-              <div className="absolute top-2.5 right-2.5 bg-black/70 backdrop-blur-xs text-white text-[10px] px-2.5 py-1 rounded-lg flex items-center gap-1">
-                <Camera className="w-3 h-3 text-[#a9d9b6]" />
-                <span>Field Photo</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPhotoExpanded(true)}
-                className="absolute bottom-2.5 right-2.5 bg-black/70 hover:bg-black text-white p-2 rounded-xl transition-opacity"
-                title="Expand photo"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
+          {/* Captured Field Photo or Species Reference Image */}
+          <div className="rounded-2xl overflow-hidden border border-[#d8d0c4] bg-black relative group shadow-sm flex items-center justify-center">
+            <SpeciesImage
+              scientificName={observation.scientificName}
+              commonName={observation.vernacularName}
+              fallbackPhotoUrl={observation.photoUrl}
+              className="w-full max-h-64 object-cover cursor-pointer transition-transform duration-300 group-hover:scale-[1.02]"
+              onClick={() => setIsPhotoExpanded(true)}
+            />
+            <div className="absolute top-2.5 right-2.5 bg-black/70 backdrop-blur-xs text-white text-[10px] px-2.5 py-1 rounded-lg flex items-center gap-1">
+              <Camera className="w-3 h-3 text-[#a9d9b6]" />
+              <span>{observation.photoUrl ? 'Field Photo' : 'Species Reference Photo'}</span>
             </div>
-          )}
+            <button
+              type="button"
+              onClick={() => setIsPhotoExpanded(true)}
+              className="absolute bottom-2.5 right-2.5 bg-black/70 hover:bg-black text-white p-2 rounded-xl transition-opacity"
+              title="Expand photo"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
           {/* Location & Exhibit Card */}
           <div className="bg-[#faf8f4] border border-[#e6dfd3] rounded-2xl p-3.5">

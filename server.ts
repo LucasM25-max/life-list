@@ -291,53 +291,130 @@ app.get("/api/taxonomy/details/:id", async (req, res) => {
   res.status(404).json({ error: "Taxon not found" });
 });
 
-// Endpoint to fetch images of a species from Wikipedia/Wikimedia
+// Endpoint to fetch images of a species from Wikipedia/Wikimedia/iNaturalist
 app.get("/api/species-images", async (req, res) => {
   const query = (req.query.q as string || "").trim();
   if (!query) {
     return res.json({ images: [] });
   }
 
+  const images: { url: string; title: string; isMain: boolean }[] = [];
+  const USER_AGENT = "LifeListApp/1.0 (Mozilla/5.0; BiologicalTaxonomyExplorer)";
+
+  // 1. Wikipedia Page Image Search (with redirects enabled)
   try {
-    // 1. Fetch main page image and gallery from English Wikipedia API
-    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages|images&titles=${encodeURIComponent(query)}&format=json&pithumbsize=1000&imlimit=10`;
+    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages|images&titles=${encodeURIComponent(query)}&redirects=1&format=json&pithumbsize=1000&imlimit=10`;
     
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+    const timeout = setTimeout(() => controller.abort(), 3500);
     
     const wikiRes = await fetch(wikiUrl, {
       signal: controller.signal,
-      headers: { "Accept": "application/json", "User-Agent": "LifeListApp/1.0" }
+      headers: { 
+        "Accept": "application/json", 
+        "User-Agent": USER_AGENT 
+      }
     });
-    
-    if (!wikiRes.ok) throw new Error("Wikipedia API error");
-    
-    const wikiData = await wikiRes.json();
     clearTimeout(timeout);
+    
+    if (wikiRes.ok) {
+      const wikiData = await wikiRes.json();
+      const pages = wikiData.query?.pages || {};
+      const pageId = Object.keys(pages)[0];
+      const page = pages[pageId];
 
-    const pages = wikiData.query?.pages || {};
-    const pageId = Object.keys(pages)[0];
-    const page = pages[pageId];
-
-    const images: { url: string, title: string, isMain: boolean }[] = [];
-
-    if (page && pageId !== "-1") {
-      // Main image
-      if (page.thumbnail && page.thumbnail.source) {
+      if (page && pageId !== "-1" && page.thumbnail?.source) {
         images.push({ url: page.thumbnail.source, title: query, isMain: true });
       }
-
-      // We could resolve the other images via another API call to get their URLs,
-      // but to save time/latency, we will fetch directly from Wikimedia Commons API
-      // if we need more images. Let's do a direct Commons search for a gallery.
     }
+  } catch (err) {
+    // Gracefully continue to fallback search providers
+  }
 
-    // 2. Fetch gallery from Wikimedia Commons
-    const commonsUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query + ' filetype:bitmap')}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|extmetadata&format=json&iiurlwidth=800`;
-    
-    const commonsRes = await fetch(commonsUrl, {
-      headers: { "Accept": "application/json", "User-Agent": "LifeListApp/1.0" }
+  // 2. Fallback if main image wasn't found in Wikipedia: Search Wikipedia generator
+  if (images.length === 0) {
+    try {
+      const wikiSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=1&prop=pageimages&format=json&pithumbsize=1000`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3500);
+
+      const wikiSearchRes = await fetch(wikiSearchUrl, {
+        signal: controller.signal,
+        headers: { "Accept": "application/json", "User-Agent": USER_AGENT }
+      });
+      clearTimeout(timeout);
+
+      if (wikiSearchRes.ok) {
+        const data = await wikiSearchRes.json();
+        const pages = data.query?.pages || {};
+        const pageId = Object.keys(pages)[0];
+        const page = pages[pageId];
+        if (page && page.thumbnail?.source) {
+          images.push({ url: page.thumbnail.source, title: query, isMain: true });
+        }
+      }
+    } catch (err) {
+      // Gracefully continue
+    }
+  }
+
+  // 3. Fallback/Supplement: iNaturalist Taxa API
+  try {
+    const inatUrl = `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(query)}&per_page=1`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+
+    const inatRes = await fetch(inatUrl, {
+      signal: controller.signal,
+      headers: { "Accept": "application/json", "User-Agent": USER_AGENT }
     });
+    clearTimeout(timeout);
+
+    if (inatRes.ok) {
+      const inatData = await inatRes.json();
+      const taxon = inatData.results?.[0];
+      
+      if (taxon?.default_photo?.medium_url) {
+        const photoUrl = taxon.default_photo.medium_url.replace('/medium.', '/large.');
+        if (!images.some(img => img.url === photoUrl)) {
+          images.push({
+            url: photoUrl,
+            title: taxon.preferred_common_name || taxon.name,
+            isMain: images.length === 0
+          });
+        }
+      }
+
+      if (taxon?.taxon_photos && Array.isArray(taxon.taxon_photos)) {
+        for (const tp of taxon.taxon_photos) {
+          if (tp.photo?.medium_url) {
+            const photoUrl = tp.photo.medium_url.replace('/medium.', '/large.');
+            if (!images.some(img => img.url === photoUrl)) {
+              images.push({
+                url: photoUrl,
+                title: tp.photo.attribution || query,
+                isMain: images.length === 0
+              });
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    // Gracefully continue
+  }
+
+  // 4. Fetch additional photos from Wikimedia Commons
+  try {
+    const commonsUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query + ' filetype:bitmap')}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|extmetadata&format=json&iiurlwidth=800`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+
+    const commonsRes = await fetch(commonsUrl, {
+      signal: controller.signal,
+      headers: { "Accept": "application/json", "User-Agent": USER_AGENT }
+    });
+    clearTimeout(timeout);
 
     if (commonsRes.ok) {
       const commonsData = await commonsRes.json();
@@ -347,23 +424,23 @@ app.get("/api/species-images", async (req, res) => {
         const cp = commonsPages[key];
         if (cp.imageinfo && cp.imageinfo.length > 0) {
           const info = cp.imageinfo[0];
-          // avoid maps/svgs
           if (info.thumburl && !info.thumburl.toLowerCase().endsWith('.svg.png')) {
-             // check if it's already the main image
-             if (!images.some(img => info.thumburl.includes(img.url.split('/').pop() || 'XYZ'))) {
-                images.push({ url: info.thumburl, title: cp.title.replace('File:', ''), isMain: images.length === 0 });
-             }
+            if (!images.some(img => img.url === info.thumburl)) {
+              images.push({ 
+                url: info.thumburl, 
+                title: cp.title.replace('File:', ''), 
+                isMain: images.length === 0 
+              });
+            }
           }
         }
       }
     }
-
-    res.json({ images });
-
   } catch (err) {
-    console.error("Species images error:", err);
-    res.json({ images: [] });
+    // Gracefully continue
   }
+
+  res.json({ images });
 });
 
 async function startServer() {

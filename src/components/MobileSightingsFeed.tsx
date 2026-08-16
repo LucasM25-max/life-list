@@ -14,6 +14,7 @@ import {
   Calendar,
   Layers
 } from 'lucide-react';
+import { SpeciesImage } from './SpeciesImage';
 
 interface MobileSightingsFeedProps {
   observations: Observation[];
@@ -66,13 +67,13 @@ export const MobileSightingsFeed: React.FC<MobileSightingsFeedProps> = ({
             className="bg-white border border-[#e6dfd3] active:border-[#2e4a36] rounded-xl p-3.5 shadow-2xs transition-all active:bg-[#faf9f6] flex flex-col justify-between"
           >
             <div className="flex items-start justify-between gap-2.5">
-              {obs.photoUrl && (
-                <img
-                  src={obs.photoUrl}
-                  alt={obs.vernacularName || obs.scientificName}
-                  className="w-14 h-14 rounded-lg object-cover border border-[#d8d0c4] shrink-0 shadow-2xs"
-                />
-              )}
+              <SpeciesImage
+                scientificName={obs.scientificName}
+                commonName={obs.vernacularName}
+                fallbackPhotoUrl={obs.photoUrl}
+                observations={observations}
+                className="w-14 h-14 rounded-lg object-cover border border-[#d8d0c4] shrink-0 shadow-2xs"
+              />
               <div className="min-w-0 flex-1">
                 {/* Header Pills */}
                 <div className="flex items-center gap-1.5 flex-wrap mb-1">

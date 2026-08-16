@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Observation, EnclosureRecord, VenueSummary, TripRecord } from '../types';
 import { computeVenues } from '../utils/storage';
 import { EnclosureMapView } from './EnclosureMapView';
+import { SpeciesImage } from './SpeciesImage';
 import { 
   MapPin, 
   Building2, 
@@ -452,6 +453,14 @@ export const VenuesMatrix: React.FC<VenuesMatrixProps> = ({
                                   >
                                     <Check className="w-3.5 h-3.5 stroke-[3]" />
                                   </button>
+
+                                  <SpeciesImage
+                                    scientificName={sp.scientificName}
+                                    commonName={sp.vernacularName}
+                                    fallbackPhotoUrl={sp.photoUrl || obs?.photoUrl}
+                                    observations={observations}
+                                    className="w-10 h-10 rounded-lg object-cover border border-[#d8d0c4] shrink-0"
+                                  />
 
                                   <div className="flex-1 min-w-0">
                                     <button

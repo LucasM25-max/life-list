@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Observation } from '../types';
 import { ChevronRight, ChevronDown, Network, ExternalLink, Sparkles, Building, Trees } from 'lucide-react';
+import { SpeciesImage } from './SpeciesImage';
 
 interface TaxonomyTreeViewProps {
   observations: Observation[];
@@ -295,6 +296,13 @@ export const TaxonomyTreeView: React.FC<TaxonomyTreeViewProps> = ({
                                                   className="flex items-center justify-between p-1.5 hover:bg-[#eef3ed] rounded-lg cursor-pointer group text-xs transition-colors"
                                                 >
                                                   <div className="flex items-center gap-2 min-w-0">
+                                                    <SpeciesImage
+                                                      scientificName={spName}
+                                                      commonName={representativeObs?.vernacularName}
+                                                      fallbackPhotoUrl={representativeObs?.photoUrl}
+                                                      observations={observations}
+                                                      className="w-7 h-7 rounded-md object-cover border border-[#d8d0c4] shrink-0"
+                                                    />
                                                     <span className="font-serif-species italic font-semibold text-[#1f241d] group-hover:text-[#2e4a36] truncate">
                                                       {spName}
                                                     </span>

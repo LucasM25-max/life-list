@@ -22,6 +22,7 @@ import {
   Compass,
   Maximize2
 } from 'lucide-react';
+import { SpeciesImage } from './SpeciesImage';
 
 interface EnclosureMapViewProps {
   enclosures: EnclosureRecord[];
@@ -560,6 +561,14 @@ export const EnclosureMapView: React.FC<EnclosureMapViewProps> = ({
                         >
                           <Check className="w-3.5 h-3.5 stroke-[3]" />
                         </button>
+
+                        <SpeciesImage
+                          scientificName={sp.scientificName}
+                          commonName={sp.vernacularName}
+                          fallbackPhotoUrl={sp.photoUrl || obs?.photoUrl}
+                          observations={observations}
+                          className="w-9 h-9 rounded-lg object-cover border border-[#d8d0c4] shrink-0"
+                        />
 
                         <div className="flex-1 min-w-0">
                           <button

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Observation, Taxon, WildStatus, VenueType, TripRecord, Coordinates } from '../types';
+import { SpeciesImage } from './SpeciesImage';
 import { searchTaxonomy } from '../services/taxonomyApi';
 import { CameraCaptureModal } from './CameraCaptureModal';
 import { processImageFile } from '../utils/imageUtils';
@@ -417,12 +418,19 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                     onClick={() => handleSelectTaxon(taxon)}
                     className="p-2.5 hover:bg-[#eef3ed] cursor-pointer flex items-center justify-between transition-colors"
                   >
-                    <div>
-                      <div className="font-bold text-[#1f241d]">
-                        {taxon.vernacularName || taxon.scientificName}
-                      </div>
-                      <div className="font-serif-species italic text-[#576054] text-[11px]">
-                        {taxon.scientificName} {taxon.authorship && <span className="text-[#828d7e] font-sans font-normal text-[10px]">{taxon.authorship}</span>}
+                    <div className="flex items-center gap-2">
+                      <SpeciesImage
+                        scientificName={taxon.scientificName}
+                        commonName={taxon.vernacularName}
+                        className="w-8 h-8 rounded-md object-cover border border-[#d8d0c4] shrink-0"
+                      />
+                      <div>
+                        <div className="font-bold text-[#1f241d]">
+                          {taxon.vernacularName || taxon.scientificName}
+                        </div>
+                        <div className="font-serif-species italic text-[#576054] text-[11px]">
+                          {taxon.scientificName} {taxon.authorship && <span className="text-[#828d7e] font-sans font-normal text-[10px]">{taxon.authorship}</span>}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -438,12 +446,20 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             {/* Selected Species Summary Card */}
             {(scientificName || vernacularName) && (
               <div className="mt-2 p-2.5 bg-[#eef3ed] border border-[#cfddce] rounded-md flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-[#2e4a36] text-xs">
-                    {vernacularName || scientificName}
-                  </div>
-                  <div className="font-serif-species italic text-[#576054] text-[11px]">
-                    {scientificName} {authorship && <span className="text-[#828d7e] font-sans font-normal text-[10px]">({authorship})</span>}
+                <div className="flex items-center gap-2.5">
+                  <SpeciesImage
+                    scientificName={scientificName}
+                    commonName={vernacularName}
+                    fallbackPhotoUrl={photoUrl}
+                    className="w-10 h-10 rounded-lg object-cover border border-[#cfddce] shrink-0"
+                  />
+                  <div>
+                    <div className="font-bold text-[#2e4a36] text-xs">
+                      {vernacularName || scientificName}
+                    </div>
+                    <div className="font-serif-species italic text-[#576054] text-[11px]">
+                      {scientificName} {authorship && <span className="text-[#828d7e] font-sans font-normal text-[10px]">({authorship})</span>}
+                    </div>
                   </div>
                 </div>
                 <span className="text-[10px] font-mono-tag text-[#2e4a36] bg-white px-2 py-0.5 rounded border border-[#cfddce]">

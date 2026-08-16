@@ -1,6 +1,7 @@
 import React from 'react';
 import { Observation } from '../types';
 import { Sparkles, MapPin, Tag, User, Trees, Building, Calendar, Edit3, Trash2 } from 'lucide-react';
+import { SpeciesImage } from './SpeciesImage';
 
 interface CompactCardGridProps {
   observations: Observation[];
@@ -86,13 +87,13 @@ export const CompactCardGrid: React.FC<CompactCardGridProps> = ({
 
               {/* Species Name & Binomial & Thumbnail */}
               <div className="mb-2.5 flex items-start gap-2.5">
-                {obs.photoUrl && (
-                  <img
-                    src={obs.photoUrl}
-                    alt={obs.vernacularName || obs.scientificName}
-                    className="w-12 h-12 rounded-xl object-cover border border-[#d8d0c4] shrink-0 shadow-2xs"
-                  />
-                )}
+                <SpeciesImage
+                  scientificName={obs.scientificName}
+                  commonName={obs.vernacularName}
+                  fallbackPhotoUrl={obs.photoUrl}
+                  observations={observations}
+                  className="w-12 h-12 rounded-xl object-cover border border-[#d8d0c4] shrink-0 shadow-2xs"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="font-bold text-sm text-[#1f241d] font-serif-species leading-tight truncate group-hover:text-[#2e4a36]">
                     {obs.vernacularName || obs.scientificName}

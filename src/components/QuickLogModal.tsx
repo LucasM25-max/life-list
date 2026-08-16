@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Observation, Taxon, WildStatus, EnclosureRecord, EnclosureSpecies, VenueType, TripRecord, Coordinates } from '../types';
+import { SpeciesImage } from './SpeciesImage';
 import { searchTaxonomy } from '../services/taxonomyApi';
 import { CameraCaptureModal } from './CameraCaptureModal';
 import { processImageFile } from '../utils/imageUtils';
@@ -908,17 +909,24 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
                       selectedIndex === idx ? 'bg-[#eef3ed] text-[#2e4a36]' : 'hover:bg-[#faf9f6]'
                     }`}
                   >
-                    <div className="min-w-0 pr-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-xs text-[#1f241d]">
-                          {taxon.vernacularName || taxon.scientificName}
-                        </span>
-                        <span className="font-serif-species italic text-[#576054] text-[11px] truncate">
-                          {taxon.scientificName}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-[#828d7e] font-mono-tag">
-                        {taxon.class} • {taxon.family}
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <SpeciesImage
+                        scientificName={taxon.scientificName}
+                        commonName={taxon.vernacularName}
+                        className="w-8 h-8 rounded-md object-cover border border-[#d8d0c4] shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-xs text-[#1f241d]">
+                            {taxon.vernacularName || taxon.scientificName}
+                          </span>
+                          <span className="font-serif-species italic text-[#576054] text-[11px] truncate">
+                            {taxon.scientificName}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-[#828d7e] font-mono-tag">
+                          {taxon.class} • {taxon.family}
+                        </div>
                       </div>
                     </div>
                     <button
@@ -1036,22 +1044,31 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
                             </div>
 
                             {/* Species Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 truncate">
-                                <span className="font-bold text-xs text-[#1f241d]">
-                                  {item.taxon.vernacularName || item.taxon.scientificName}
-                                </span>
-                                <span className="font-serif-species italic text-[#6b7568] text-[11px] truncate">
-                                  {item.taxon.scientificName}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-[10px] text-[#828d7e] font-mono-tag">
-                                <span>{item.taxon.class} • {item.taxon.family}</span>
-                                {item.isFromSign && (
-                                  <span className="text-[9px] bg-amber-100 text-amber-900 px-1 py-0.2 rounded font-bold">
-                                    Sign
+                            <div className="flex-1 min-w-0 flex items-center gap-2">
+                              {!item.photoUrl && (
+                                <SpeciesImage
+                                  scientificName={item.taxon.scientificName}
+                                  commonName={item.taxon.vernacularName}
+                                  className="w-9 h-9 rounded-md object-cover border border-[#d8d0c4] shrink-0"
+                                />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <span className="font-bold text-xs text-[#1f241d]">
+                                    {item.taxon.vernacularName || item.taxon.scientificName}
                                   </span>
-                                )}
+                                  <span className="font-serif-species italic text-[#6b7568] text-[11px] truncate">
+                                    {item.taxon.scientificName}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] text-[#828d7e] font-mono-tag">
+                                  <span>{item.taxon.class} • {item.taxon.family}</span>
+                                  {item.isFromSign && (
+                                    <span className="text-[9px] bg-amber-100 text-amber-900 px-1 py-0.2 rounded font-bold">
+                                      Sign
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
@@ -1427,6 +1444,12 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
                           }`}>
                             {sp.isSeen && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
+                          <SpeciesImage
+                            scientificName={sp.scientificName}
+                            commonName={sp.vernacularName}
+                            fallbackPhotoUrl={sp.photoUrl}
+                            className="w-9 h-9 rounded-lg object-cover border border-[#d8d0c4] shrink-0"
+                          />
                           <div>
                             <div className="font-bold text-xs sm:text-sm text-[#1f241d]">
                               {sp.vernacularName}

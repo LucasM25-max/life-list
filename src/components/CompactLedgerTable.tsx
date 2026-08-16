@@ -8,6 +8,7 @@ import {
   User,
   MapPin
 } from 'lucide-react';
+import { SpeciesImage } from './SpeciesImage';
 
 interface CompactLedgerTableProps {
   observations: Observation[];
@@ -79,13 +80,13 @@ export const CompactLedgerTable: React.FC<CompactLedgerTableProps> = ({
                   {/* Species Name Column */}
                   <td className="py-2.5 px-3 align-middle">
                     <div className="flex items-center gap-2.5">
-                      {obs.photoUrl && (
-                        <img
-                          src={obs.photoUrl}
-                          alt={obs.vernacularName || obs.scientificName}
-                          className="w-9 h-9 rounded-lg object-cover border border-[#d8d0c4] shrink-0 shadow-2xs"
-                        />
-                      )}
+                      <SpeciesImage
+                        scientificName={obs.scientificName}
+                        commonName={obs.vernacularName}
+                        fallbackPhotoUrl={obs.photoUrl}
+                        observations={observations}
+                        className="w-9 h-9 rounded-lg object-cover border border-[#d8d0c4] shrink-0 shadow-2xs"
+                      />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-[#1f241d] group-hover:text-[#2e4a36] text-[13px] font-serif-species">
