@@ -70,7 +70,7 @@ export const MobileMoreDrawer: React.FC<MobileMoreDrawerProps> = ({
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="w-4 h-4 text-[#2e4a36]" />
             <h3 className="font-bold text-sm text-[#1f241d] font-serif-species">
-              Filters & App Tools
+              Tools & Filters
             </h3>
           </div>
           <button
@@ -97,7 +97,6 @@ export const MobileMoreDrawer: React.FC<MobileMoreDrawerProps> = ({
               </div>
               <div className="text-left">
                 <div className="text-sm">Log Life Sighting</div>
-                <div className="text-[10px] text-[#c2d6c6] font-normal">Scan sign, walkthrough, or detailed entry</div>
               </div>
             </div>
             <span className="text-xs bg-white/20 px-2 py-0.5 rounded font-mono">Open</span>
@@ -209,9 +208,8 @@ export const MobileMoreDrawer: React.FC<MobileMoreDrawerProps> = ({
             >
               <div className="flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-[#99582a]" />
-                <span>{showMilestones ? 'Hide Milestones' : 'View Milestones & Achievements'}</span>
+                <span>{showMilestones ? 'Hide Milestones' : 'Milestones'}</span>
               </div>
-              <span className="text-[10px] text-[#828d7e]">Catalogue of Life</span>
             </button>
 
             <button
@@ -223,9 +221,8 @@ export const MobileMoreDrawer: React.FC<MobileMoreDrawerProps> = ({
             >
               <div className="flex items-center gap-2">
                 <Download className="w-4 h-4 text-[#2e4a36]" />
-                <span>Data Backup & CSV Export</span>
+                <span>Data Backup & Export</span>
               </div>
-              <span className="text-[10px] text-[#828d7e]">Excel / JSON</span>
             </button>
           </div>
         </div>

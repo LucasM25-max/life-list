@@ -1,5 +1,5 @@
 import React from 'react';
-import { Observation, LifeListFilter } from '../types';
+import { Observation, LifeListFilter, TripRecord } from '../types';
 import appLogo from '../assets/images/bold_app_logo_1786709233012.jpg';
 import { 
   Plus, 
@@ -9,15 +9,20 @@ import {
   Download, 
   SlidersHorizontal,
   Layers,
-  ChevronDown
+  ChevronDown,
+  Navigation,
+  CheckCircle2
 } from 'lucide-react';
 
 interface HeaderProps {
   observations: Observation[];
   filter: LifeListFilter;
   setFilter: React.Dispatch<React.SetStateAction<LifeListFilter>>;
+  activeTrip?: TripRecord | null;
   onOpenLogModal: () => void;
   onOpenExportImport: () => void;
+  onOpenStartTrip?: () => void;
+  onOpenEndTrip?: () => void;
   onOpenMobileMore?: () => void;
 }
 
@@ -25,8 +30,11 @@ export const Header: React.FC<HeaderProps> = ({
   observations,
   filter,
   setFilter,
+  activeTrip,
   onOpenLogModal,
   onOpenExportImport,
+  onOpenStartTrip,
+  onOpenEndTrip,
   onOpenMobileMore
 }) => {
   const uniqueSpecies = new Set(observations.map(o => o.scientificName.toLowerCase())).size;
@@ -117,6 +125,31 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-[#99582a] font-semibold">{captiveCount} Captive</span>
           </div>
 
+          {/* Trip Button: Active trip badge OR Start trip button */}
+          {activeTrip ? (
+            <button
+              onClick={onOpenEndTrip}
+              title={`Active Field Trip at ${activeTrip.venueName}. Click to review or finish.`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs transition-all cursor-pointer animate-pulse-subtle border border-emerald-500"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
+              <Navigation className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Trip:</span>
+              <span className="max-w-[100px] truncate">{activeTrip.venueName}</span>
+            </button>
+          ) : (
+            onOpenStartTrip && (
+              <button
+                onClick={onOpenStartTrip}
+                title="Start a new Field Trip at a zoo or nature reserve"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#2e4a36] bg-[#eef3ed] hover:bg-[#dbe7dc] border border-[#cfddce] rounded-lg transition-colors cursor-pointer"
+              >
+                <Navigation className="w-3.5 h-3.5 text-[#2e4a36]" />
+                <span>Start Trip</span>
+              </button>
+            )
+          )}
+
           {/* Backup / Data Button */}
           <button
             onClick={onOpenExportImport}
@@ -131,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="unified-log-btn"
             onClick={onOpenLogModal}
-            title="Scan zoo signs, rapid walkthrough log, or single entry (⌘K / ⌘Q)"
+            title="Scan zoo signs, quick log, or single log (⌘K / ⌘Q)"
             className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-bold text-white bg-[#2e4a36] hover:bg-[#233a2b] rounded-lg shadow-xs transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />

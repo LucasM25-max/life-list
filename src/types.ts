@@ -28,6 +28,24 @@ export interface Coordinates {
   latitude: number;
   longitude: number;
   accuracy?: number;
+  capturedAt?: number;
+}
+
+export interface TripRecord {
+  id: string;
+  venueName: string;
+  venueType: VenueType;
+  wildStatus: WildStatus;
+  startTime: number;
+  startDate: string; // YYYY-MM-DD
+  endTime?: number;
+  endDate?: string;
+  status: 'active' | 'completed';
+  notes?: string;
+  observationIds?: string[];
+  enclosureIds?: string[];
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface EnclosureSpecies {
@@ -53,6 +71,7 @@ export interface EnclosureSpecies {
 
 export interface EnclosureRecord {
   id: string;
+  tripId?: string;
   venueName: string;
   enclosureName: string;
   timestamp: number; // Used for chronological walkthrough
@@ -68,6 +87,7 @@ export interface EnclosureRecord {
 
 export interface Observation {
   id: string;
+  tripId?: string;
   taxonId: string;
   scientificName: string;
   vernacularName: string;
@@ -122,7 +142,7 @@ export interface Milestone {
   id: string;
   title: string;
   subtitle: string;
-  category: 'count' | 'clade' | 'venue' | 'diversity';
+  category: 'count' | 'clade' | 'venue' | 'diversity' | 'guilds' | 'fieldcraft';
   progress: number;
   target: number;
   completed: boolean;

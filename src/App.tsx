@@ -1,14 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Observation, LifeListFilter, EnclosureRecord } from './types';
+import { Observation, LifeListFilter, EnclosureRecord, TripRecord, VenueType, WildStatus } from './types';
 import { 
   loadObservations, 
   saveObservations, 
   loadEnclosures, 
   saveEnclosures, 
-  recalculateLifers 
+  loadTrips,
+  saveTrips,
+  loadActiveTrip,
+  saveActiveTrip,
+  recalculateLifers,
+  deduplicateObservations
 } from './utils/storage';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
+import { ActiveTripBar } from './components/ActiveTripBar';
+import { StartTripModal } from './components/StartTripModal';
+import { EndTripModal } from './components/EndTripModal';
 import { CompactLedgerTable } from './components/CompactLedgerTable';
 import { CompactCardGrid } from './components/CompactCardGrid';
 import { TaxonomyTreeView } from './components/TaxonomyTreeView';
@@ -26,6 +34,13 @@ import { Trophy } from 'lucide-react';
 export default function App() {
   const [observations, setObservations] = useState<Observation[]>(() => loadObservations());
   const [enclosures, setEnclosures] = useState<EnclosureRecord[]>(() => loadEnclosures());
+  const [trips, setTrips] = useState<TripRecord[]>(() => loadTrips());
+  const [activeTrip, setActiveTrip] = useState<TripRecord | null>(() => loadActiveTrip());
+
+  // Trip Modals state
+  const [isStartTripOpen, setIsStartTripOpen] = useState(false);
+  const [isEndTripOpen, setIsEndTripOpen] = useState(false);
+  const [startTripDefaultVenue, setStartTripDefaultVenue] = useState<string>('');
 
   // Filters and views
   const [filter, setFilter] = useState<LifeListFilter>({
@@ -60,6 +75,16 @@ export default function App() {
   useEffect(() => {
     saveEnclosures(enclosures);
   }, [enclosures]);
+
+  // Synchronize trips to localStorage
+  useEffect(() => {
+    saveTrips(trips);
+  }, [trips]);
+
+  // Synchronize activeTrip to localStorage
+  useEffect(() => {
+    saveActiveTrip(activeTrip);
+  }, [activeTrip]);
 
   // Global Keyboard Shortcuts (⌘K for single add, ⌘Q for quick log, ⌘S for scan sign)
   useEffect(() => {
@@ -158,6 +183,86 @@ export default function App() {
     });
   }, [observations, filter]);
 
+  // Trip Handlers
+  const handleStartTrip = (
+    tripInput: { venueName: string; venueType: VenueType; wildStatus: WildStatus; notes?: string; startDate?: string } | string,
+    argVenueType?: VenueType,
+    argWildStatus?: WildStatus,
+    argNotes?: string
+  ) => {
+    const now = Date.now();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    let venueName = '';
+    let venueType: VenueType = 'zoo';
+    let wildStatus: WildStatus = 'captive';
+    let notes: string | undefined = undefined;
+
+    if (typeof tripInput === 'object' && tripInput !== null) {
+      venueName = tripInput.venueName;
+      venueType = tripInput.venueType;
+      wildStatus = tripInput.wildStatus;
+      notes = tripInput.notes;
+    } else if (typeof tripInput === 'string') {
+      venueName = tripInput;
+      venueType = argVenueType || 'zoo';
+      wildStatus = argWildStatus || 'captive';
+      notes = argNotes;
+    }
+
+    const newTrip: TripRecord = {
+      id: `trip-${now}-${Math.random().toString(36).substring(2, 7)}`,
+      venueName: venueName.trim(),
+      venueType,
+      wildStatus,
+      startDate: todayStr,
+      startTime: now,
+      status: 'active',
+      notes: notes?.trim() || undefined,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    setActiveTrip(newTrip);
+    setTrips(prev => [newTrip, ...prev.filter(t => t.id !== newTrip.id)]);
+    setIsStartTripOpen(false);
+
+    // Automatically set filter venue to active trip's venue
+    setFilter(prev => ({
+      ...prev,
+      venue: newTrip.venueName
+    }));
+  };
+
+  const handleEndTrip = (notes?: string) => {
+    if (!activeTrip) return;
+    const now = Date.now();
+    const completedTrip: TripRecord = {
+      ...activeTrip,
+      endTime: now,
+      endDate: new Date().toISOString().split('T')[0],
+      status: 'completed',
+      notes: notes?.trim() || activeTrip.notes,
+      updatedAt: now
+    };
+
+    setTrips(prev => prev.map(t => t.id === activeTrip.id ? completedTrip : t));
+    setActiveTrip(null);
+    setIsEndTripOpen(false);
+  };
+
+  const handleDiscardActiveTrip = () => {
+    if (!activeTrip) return;
+    setTrips(prev => prev.filter(t => t.id !== activeTrip.id));
+    setActiveTrip(null);
+    setIsEndTripOpen(false);
+  };
+
+  const handleStartTripAtVenue = (venueName: string) => {
+    setStartTripDefaultVenue(venueName);
+    setIsStartTripOpen(true);
+  };
+
   // Handlers
   const handleSaveObservation = (obsData: Omit<Observation, 'id' | 'createdAt' | 'updatedAt' | 'isLifer'>) => {
     if (editingObservation) {
@@ -168,7 +273,7 @@ export default function App() {
             ? { ...item, ...obsData, updatedAt: Date.now() }
             : item
         );
-        return recalculateLifers(updated);
+        return deduplicateObservations(updated);
       });
       setEditingObservation(null);
     } else {
@@ -176,10 +281,11 @@ export default function App() {
       const newObs: Observation = {
         id: `obs-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         ...obsData,
+        tripId: obsData.tripId || activeTrip?.id || undefined,
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
-      setObservations(prev => recalculateLifers([newObs, ...prev]));
+      setObservations(prev => deduplicateObservations([newObs, ...prev]));
     }
   };
 
@@ -187,10 +293,11 @@ export default function App() {
     const newItems: Observation[] = batchList.map((item, idx) => ({
       id: `obs-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
       ...item,
+      tripId: item.tripId || activeTrip?.id || undefined,
       createdAt: Date.now(),
       updatedAt: Date.now()
     }));
-    setObservations(prev => recalculateLifers([...newItems, ...prev]));
+    setObservations(prev => deduplicateObservations([...newItems, ...prev]));
   };
 
   // Save Enclosure Record & its Seen Observations from Zoo Sign Scanner
@@ -198,9 +305,18 @@ export default function App() {
     enclosure: EnclosureRecord,
     newObservations: Observation[]
   ) => {
-    setEnclosures(prev => [enclosure, ...prev]);
+    const encWithTrip = {
+      ...enclosure,
+      tripId: enclosure.tripId || activeTrip?.id || undefined
+    };
+    setEnclosures(prev => [encWithTrip, ...prev]);
+
     if (newObservations.length > 0) {
-      setObservations(prev => recalculateLifers([...newObservations, ...prev]));
+      const obsWithTrip = newObservations.map(o => ({
+        ...o,
+        tripId: o.tripId || activeTrip?.id || undefined
+      }));
+      setObservations(prev => deduplicateObservations([...obsWithTrip, ...prev]));
     }
   };
 
@@ -252,6 +368,7 @@ export default function App() {
         venueName: enc.venueName,
         venueType: 'zoo',
         wildStatus: 'captive',
+        tripId: enc.tripId || activeTrip?.id || undefined,
         exhibitOrHabitat: enc.enclosureName,
         enclosureId: enc.id,
         enclosureName: enc.enclosureName,
@@ -323,18 +440,44 @@ export default function App() {
         observations={observations}
         filter={filter}
         setFilter={setFilter}
+        activeTrip={activeTrip}
         onOpenLogModal={() => handleOpenLogModal('scan')}
         onOpenExportImport={() => setIsExportImportOpen(true)}
+        onOpenStartTrip={() => {
+          setStartTripDefaultVenue(filter.venue || recentVenues[0] || '');
+          setIsStartTripOpen(true);
+        }}
+        onOpenEndTrip={() => setIsEndTripOpen(true)}
         onOpenMobileMore={() => setIsMobileMoreOpen(true)}
       />
 
-      {/* Unified Search & Filter Toolbar */}
-      <FilterBar
-        observations={observations}
-        filter={filter}
-        setFilter={setFilter}
-        onOpenMobileFilters={() => setIsMobileMoreOpen(true)}
-      />
+      {/* Persistent Active Trip Status Banner */}
+      {activeTrip && (
+        <ActiveTripBar
+          activeTrip={activeTrip}
+          observations={observations}
+          enclosures={enclosures}
+          onOpenLogModal={() => handleOpenLogModal('walkthrough')}
+          onOpenEndTripModal={() => setIsEndTripOpen(true)}
+          onViewTripMap={() => {
+            setFilter(prev => ({
+              ...prev,
+              venue: activeTrip.venueName,
+              viewMode: 'venues_matrix'
+            }));
+          }}
+        />
+      )}
+
+      {/* Unified Search & Filter Toolbar - shown on Life List views */}
+      {(filter.viewMode === 'compact_table' || filter.viewMode === 'ledger_cards') && (
+        <FilterBar
+          observations={observations}
+          filter={filter}
+          setFilter={setFilter}
+          onOpenMobileFilters={() => setIsMobileMoreOpen(true)}
+        />
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-2.5 sm:py-4">
@@ -390,6 +533,8 @@ export default function App() {
           <VenuesMatrix
             observations={observations}
             enclosures={enclosures}
+            trips={trips}
+            activeTrip={activeTrip}
             onFilterByVenue={handleFilterByVenue}
             onOpenScanModal={(defaultVenue) => {
               setFilter(prev => ({ ...prev, venue: defaultVenue || prev.venue }));
@@ -398,6 +543,7 @@ export default function App() {
             onToggleSpeciesSeen={handleToggleSpeciesSeen}
             onSelectSpeciesDossier={setSelectedSpeciesDossier}
             onSelectObservation={setSelectedObservation}
+            onStartTripAtVenue={handleStartTripAtVenue}
           />
         )}
 
@@ -409,11 +555,8 @@ export default function App() {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#576054] hover:text-[#1f241d] transition-colors cursor-pointer"
             >
               <Trophy className="w-4 h-4 text-[#99582a]" />
-              <span>{showMilestones ? 'Hide' : 'Show'} Milestones & Phylogenetic Achievements</span>
+              <span>{showMilestones ? 'Hide Milestones' : 'Milestones'}</span>
             </button>
-            <span className="text-[11px] font-mono-tag text-[#828d7e] hidden sm:inline">
-              Catalogue of Life consensus checklist
-            </span>
           </div>
 
           {showMilestones && (
@@ -447,6 +590,26 @@ export default function App() {
         showMilestones={showMilestones}
       />
 
+      {/* Start Field Trip Modal */}
+      <StartTripModal
+        isOpen={isStartTripOpen}
+        onClose={() => setIsStartTripOpen(false)}
+        onStartTrip={handleStartTrip}
+        recentVenues={recentVenues}
+        defaultVenue={startTripDefaultVenue || filter.venue || recentVenues[0] || ''}
+      />
+
+      {/* End / Finish Field Trip Modal */}
+      <EndTripModal
+        isOpen={isEndTripOpen}
+        onClose={() => setIsEndTripOpen(false)}
+        activeTrip={activeTrip}
+        observations={observations}
+        enclosures={enclosures}
+        onEndTrip={handleEndTrip}
+        onDiscardTrip={handleDiscardActiveTrip}
+      />
+
       {/* Unified Logging Modal (Scan / Walkthrough / Detailed Single Entry) */}
       <UnifiedLogModal
         isOpen={isLogModalOpen}
@@ -456,12 +619,13 @@ export default function App() {
         }}
         initialMode={logModalInitialMode}
         recentVenues={recentVenues}
-        defaultVenueName={filter.venue || recentVenues[0] || ''}
-        defaultVenueType="zoo"
+        defaultVenueName={activeTrip?.venueName || filter.venue || recentVenues[0] || ''}
+        defaultVenueType={activeTrip?.venueType || 'zoo'}
         defaultEnclosurePrefix="Enclosure"
-        enclosureIndex={enclosures.filter(e => e.venueName.toLowerCase() === (filter.venue || recentVenues[0] || '').toLowerCase()).length + 1}
+        enclosureIndex={enclosures.filter(e => e.venueName.toLowerCase() === (activeTrip?.venueName || filter.venue || recentVenues[0] || '').toLowerCase()).length + 1}
         existingObservations={observations}
         editingObservation={editingObservation}
+        activeTrip={activeTrip}
         onSaveSingle={handleSaveObservation}
         onSaveBatch={handleSaveBatch}
         onSaveEnclosureAndObservations={handleSaveEnclosureAndObservations}

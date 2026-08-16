@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Observation, Taxon, WildStatus, VenueType } from '../types';
+import { Observation, Taxon, WildStatus, VenueType, TripRecord, Coordinates } from '../types';
 import { searchTaxonomy } from '../services/taxonomyApi';
 import { CameraCaptureModal } from './CameraCaptureModal';
 import { processImageFile } from '../utils/imageUtils';
+import { useDeviceGps } from '../hooks/useDeviceGps';
+import { GpsStatusBadge } from './GpsStatusBadge';
 import { 
   X, 
   Search, 
@@ -10,19 +12,18 @@ import {
   MapPin, 
   Tag, 
   Calendar, 
-  Clock, 
   Check, 
   Trees, 
   Building2, 
-  User,
-  Plus,
-  Loader2,
-  ExternalLink,
-  ChevronDown,
-  Camera,
-  Upload,
-  Trash2,
-  AlertCircle
+  Loader2, 
+  ExternalLink, 
+  ChevronDown, 
+  Camera, 
+  Upload, 
+  Trash2, 
+  AlertCircle,
+  Hash,
+  Compass
 } from 'lucide-react';
 
 interface QuickAddModalProps {
@@ -31,9 +32,21 @@ interface QuickAddModalProps {
   onSave: (obs: Omit<Observation, 'id' | 'createdAt' | 'updatedAt' | 'isLifer'>) => void;
   existingObservations: Observation[];
   editingObservation?: Observation | null;
+  activeTrip?: TripRecord | null;
   onOpenScanModal?: (defaultVenueName?: string) => void;
   renderModeSwitcher?: () => React.ReactNode;
 }
+
+const PRESET_TAGS = [
+  'Lifer',
+  'Foraging',
+  'Juvenile',
+  'Breeding',
+  'Vocalizing',
+  'Basking',
+  'Enrichment',
+  'Target'
+];
 
 export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   isOpen,
@@ -41,6 +54,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   onSave,
   existingObservations,
   editingObservation,
+  activeTrip,
   onOpenScanModal,
   renderModeSwitcher
 }) => {
@@ -66,42 +80,33 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [venueName, setVenueName] = useState('');
   const [venueType, setVenueType] = useState<VenueType>('zoo');
   const [wildStatus, setWildStatus] = useState<WildStatus>('captive');
-  const [exhibitOrHabitat, setExhibitOrHabitat] = useState('');
-  const [individualNameOrTag, setIndividualNameOrTag] = useState('');
-  const [country, setCountry] = useState('');
-  const [region, setRegion] = useState('');
-  const [count, setCount] = useState<number>(1);
-  const [sex, setSex] = useState<'unspecified' | 'male' | 'female' | 'mixed_group'>('unspecified');
-  const [lifeStage, setLifeStage] = useState<'adult' | 'juvenile' | 'subadult' | 'chick_cub_larva' | 'various'>('adult');
   const [notes, setNotes] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [customTagInput, setCustomTagInput] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
 
   // Camera capture modal & file input
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Hook into device GPS
+  const gps = useDeviceGps(isOpen);
 
   // Taxon hierarchy manual expand
   const [showAdvancedTaxonomy, setShowAdvancedTaxonomy] = useState(false);
-
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Recent venues for quick-click
   const recentVenues = Array.from(new Set(existingObservations.map(o => o.venueName.trim()).filter(Boolean))).slice(0, 6);
 
-  // Popular quick tags
-  const PRESET_TAGS = [
-    'Enrichment',
-    'Breeding plumage',
-    'Vocalizing',
-    'Foraging / Feeding',
-    'Basking',
-    'Juvenile / Cub',
-    'Target species',
-    'Wild lifer'
-  ];
+  // Sync GPS coordinates when gps.coordinates updates if not editing with existing coordinates
+  useEffect(() => {
+    if (gps.coordinates && !editingObservation?.coordinates) {
+      setCoordinates(gps.coordinates);
+    }
+  }, [gps.coordinates, editingObservation]);
 
   // Initialize or reset when opened or when editing
   useEffect(() => {
@@ -123,34 +128,48 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       setVenueName(editingObservation.venueName);
       setVenueType(editingObservation.venueType);
       setWildStatus(editingObservation.wildStatus);
-      setExhibitOrHabitat(editingObservation.exhibitOrHabitat || '');
-      setIndividualNameOrTag(editingObservation.individualNameOrTag || '');
-      setCountry(editingObservation.country || '');
-      setRegion(editingObservation.region || '');
-      setCount(editingObservation.count || 1);
-      setSex(editingObservation.sex || 'unspecified');
-      setLifeStage(editingObservation.lifeStage || 'adult');
-      setNotes(editingObservation.notes || '');
-      setSelectedTags(editingObservation.tags || []);
+      if (editingObservation.coordinates) {
+        setCoordinates(editingObservation.coordinates);
+      }
+      
+      // If editing existing obs with tags but not in notes, include tags in notes
+      let initialNotes = editingObservation.notes || '';
+      if (editingObservation.tags && editingObservation.tags.length > 0) {
+        const missingTags = editingObservation.tags.filter(
+          t => !initialNotes.toLowerCase().includes(`#${t.toLowerCase()}`)
+        );
+        if (missingTags.length > 0) {
+          const tagsString = missingTags.map(t => `#${t.replace(/\s+/g, '')}`).join(' ');
+          initialNotes = initialNotes ? `${initialNotes} ${tagsString}` : tagsString;
+        }
+      }
+      setNotes(initialNotes);
+
       setPhotoUrl(editingObservation.photoUrl || '');
       setFormError(null);
       setSearchQuery('');
       setSearchResults([]);
       setSelectedTaxon(null);
     } else {
-      // New log defaults
-      const lastObs = existingObservations[0];
-      if (lastObs) {
-        // Pre-fill last used venue for rapid sequential entry
-        setVenueName(lastObs.venueName);
-        setVenueType(lastObs.venueType);
-        setWildStatus(lastObs.wildStatus);
-        setDate(lastObs.date || new Date().toISOString().split('T')[0]);
-      } else {
-        setVenueName('San Diego Zoo');
-        setVenueType('zoo');
-        setWildStatus('captive');
+      // If there is an active trip, automatically pre-fill active trip details!
+      if (activeTrip) {
+        setVenueName(activeTrip.venueName);
+        setVenueType(activeTrip.venueType);
+        setWildStatus(activeTrip.wildStatus);
         setDate(new Date().toISOString().split('T')[0]);
+      } else {
+        const lastObs = existingObservations[0];
+        if (lastObs) {
+          setVenueName(lastObs.venueName);
+          setVenueType(lastObs.venueType);
+          setWildStatus(lastObs.wildStatus);
+          setDate(lastObs.date || new Date().toISOString().split('T')[0]);
+        } else {
+          setVenueName('San Diego Zoo');
+          setVenueType('zoo');
+          setWildStatus('captive');
+          setDate(new Date().toISOString().split('T')[0]);
+        }
       }
 
       setScientificName('');
@@ -159,13 +178,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       setOrderName('');
       setFamilyName('');
       setGenusName('');
-      setExhibitOrHabitat('');
-      setIndividualNameOrTag('');
-      setCount(1);
-      setSex('unspecified');
-      setLifeStage('adult');
       setNotes('');
-      setSelectedTags([]);
+      setCustomTagInput('');
       setPhotoUrl('');
       setFormError(null);
       setSearchQuery('');
@@ -176,7 +190,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         searchInputRef.current?.focus();
       }, 100);
     }
-  }, [isOpen, editingObservation]);
+  }, [isOpen, editingObservation, activeTrip]);
 
   // Debounced search against Catalogue of Life
   useEffect(() => {
@@ -222,21 +236,38 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     setSearchQuery('');
   };
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    );
+  // Toggle or append tag directly inside the notes text
+  const toggleTagInNotes = (tag: string) => {
+    const formattedTag = `#${tag.replace(/\s+/g, '')}`;
+    const regex = new RegExp(`(^|\\s)${formattedTag}(\\s|$)`, 'gi');
+    
+    if (regex.test(notes)) {
+      // Remove tag from notes
+      const updatedNotes = notes.replace(regex, ' ').replace(/\s+/g, ' ').trim();
+      setNotes(updatedNotes);
+    } else {
+      // Append tag to notes
+      const updatedNotes = notes.trim() ? `${notes.trim()} ${formattedTag}` : formattedTag;
+      setNotes(updatedNotes);
+    }
+    notesTextareaRef.current?.focus();
   };
 
   const handleAddCustomTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && customTagInput.trim()) {
       e.preventDefault();
-      const t = customTagInput.trim();
-      if (!selectedTags.includes(t)) {
-        setSelectedTags([...selectedTags, t]);
+      const cleanTag = customTagInput.trim().replace(/^#+/, '');
+      if (cleanTag) {
+        toggleTagInNotes(cleanTag);
       }
       setCustomTagInput('');
     }
+  };
+
+  const isTagInNotes = (tag: string) => {
+    const formattedTag = `#${tag.replace(/\s+/g, '')}`;
+    const regex = new RegExp(`(^|\\s)${formattedTag}(\\s|$)`, 'i');
+    return regex.test(notes);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -261,6 +292,11 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       return;
     }
 
+    // Extract all hashtags from notes for structured tagging
+    const extractedTags = Array.from(
+      new Set((notes.match(/#[\w-]+/g) || []).map(t => t.slice(1)))
+    );
+
     onSave({
       taxonId: selectedTaxon?.id || `custom-${Date.now()}`,
       scientificName: scientificName.trim(),
@@ -279,15 +315,15 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       venueName: venueName.trim(),
       venueType,
       wildStatus,
-      exhibitOrHabitat: exhibitOrHabitat.trim(),
-      individualNameOrTag: individualNameOrTag.trim(),
-      country: country.trim(),
-      region: region.trim(),
-      count: Math.max(1, count),
-      sex,
-      lifeStage,
+      tripId: editingObservation?.tripId || activeTrip?.id || undefined,
+      coordinates: coordinates || gps.coordinates || undefined,
+      exhibitOrHabitat: '',
+      individualNameOrTag: '',
+      count: 1,
+      sex: 'unspecified',
+      lifeStage: 'adult',
       notes: notes.trim(),
-      tags: selectedTags,
+      tags: extractedTags,
       photoUrl: photoUrl.trim() || undefined
     });
 
@@ -298,7 +334,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white border border-[#e6dfd3] rounded-lg shadow-xl w-full max-w-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white border border-[#e6dfd3] rounded-lg shadow-xl w-full max-w-xl overflow-hidden my-auto max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="bg-[#f9f8f5] border-b border-[#e6dfd3] px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -307,11 +343,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-bold text-[#1f241d] font-serif-species">
-                {editingObservation ? 'Edit Life Sighting' : 'Single Sighting Entry'}
+                {editingObservation ? 'Edit Sighting' : 'Single Log'}
               </h2>
-              <p className="text-[11px] text-[#6b7568]">
-                Full custom taxonomy, tags & individual metadata
-              </p>
             </div>
           </div>
           
@@ -323,7 +356,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             )}
             <button
               onClick={onClose}
-              className="text-[#828d7e] hover:text-[#1f241d] p-1 rounded-md hover:bg-[#eee9e0] transition-colors"
+              className="text-[#828d7e] hover:text-[#1f241d] p-1 rounded-md hover:bg-[#eee9e0] transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -358,7 +391,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           {/* 1. SPECIES LOOKUP BAR */}
           <div>
             <label className="block text-[11px] font-mono-tag uppercase tracking-wider text-[#576054] mb-1 font-semibold">
-              1. Catalogue of Life Species Search
+              Species
             </label>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#828d7e]" />
@@ -367,17 +400,17 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search common name (e.g. Cheetah, Shoebill) or binomial (Panthera leo)..."
+                placeholder="Search common or scientific name..."
                 className="w-full bg-[#faf9f6] border border-[#d8d0c4] focus:border-[#2e4a36] focus:bg-white rounded-md pl-9 pr-8 py-2 text-xs text-[#1f241d] placeholder-[#828d7e] focus:outline-none focus:ring-1 focus:ring-[#2e4a36]"
               />
               {isSearching && (
-                <Loader2 className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-[#2e4a36] animate-spin" />
+                <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#2e4a36] animate-spin" />
               )}
             </div>
 
-            {/* Live Autocomplete Results Dropdown */}
+            {/* Live Search Results Dropdown */}
             {searchResults.length > 0 && (
-              <div className="mt-1 bg-white border border-[#d8d0c4] rounded-md shadow-lg max-h-56 overflow-y-auto divide-y divide-[#f0eae0] z-20">
+              <div className="mt-1 bg-white border border-[#2e4a36] rounded-md shadow-lg max-h-48 overflow-y-auto divide-y divide-[#eee9e0] z-20 relative">
                 {searchResults.map(taxon => (
                   <div
                     key={taxon.id}
@@ -385,72 +418,46 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                     className="p-2.5 hover:bg-[#eef3ed] cursor-pointer flex items-center justify-between transition-colors"
                   >
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-[#1f241d]">
-                          {taxon.vernacularName || taxon.scientificName}
-                        </span>
-                        <span className="font-serif-species italic text-[11px] text-[#576054]">
-                          {taxon.scientificName}
-                        </span>
-                        {taxon.iucnCategory && (
-                          <span className={`text-[9px] font-bold px-1 py-0.2 rounded ${
-                            taxon.iucnCategory === 'CR' ? 'bg-red-100 text-red-800' :
-                            taxon.iucnCategory === 'EN' ? 'bg-orange-100 text-orange-800' :
-                            taxon.iucnCategory === 'VU' ? 'bg-amber-100 text-amber-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {taxon.iucnCategory}
-                          </span>
-                        )}
+                      <div className="font-bold text-[#1f241d]">
+                        {taxon.vernacularName || taxon.scientificName}
                       </div>
-                      <div className="text-[10px] text-[#828d7e] font-mono-tag mt-0.5">
-                        {taxon.class} › {taxon.order} › {taxon.family}
+                      <div className="font-serif-species italic text-[#576054] text-[11px]">
+                        {taxon.scientificName} {taxon.authorship && <span className="text-[#828d7e] font-sans font-normal text-[10px]">{taxon.authorship}</span>}
                       </div>
                     </div>
-                    <span className="text-[10px] bg-[#f2ede4] text-[#576054] px-1.5 py-0.5 rounded font-mono-tag">
-                      Select
-                    </span>
+                    <div className="text-right">
+                      <span className="text-[10px] font-mono-tag bg-[#eee9e0] text-[#576054] px-1.5 py-0.5 rounded">
+                        {taxon.class} › {taxon.family}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
 
-          {/* Selected Species Card (Compact) */}
-          <div className="bg-[#f9f8f5] border border-[#e6dfd3] rounded-md p-2.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1">
+            {/* Selected Species Summary Card */}
+            {(scientificName || vernacularName) && (
+              <div className="mt-2 p-2.5 bg-[#eef3ed] border border-[#cfddce] rounded-md flex items-center justify-between">
                 <div>
-                  <label className="block text-[10px] font-mono-tag text-[#6b7568] uppercase">Common Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={vernacularName}
-                    onChange={e => setVernacularName(e.target.value)}
-                    placeholder="e.g. Snow Leopard"
-                    className="w-full bg-white border border-[#d8d0c4] rounded px-2 py-1 text-xs font-semibold text-[#1f241d] focus:outline-none focus:border-[#2e4a36]"
-                  />
+                  <div className="font-bold text-[#2e4a36] text-xs">
+                    {vernacularName || scientificName}
+                  </div>
+                  <div className="font-serif-species italic text-[#576054] text-[11px]">
+                    {scientificName} {authorship && <span className="text-[#828d7e] font-sans font-normal text-[10px]">({authorship})</span>}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-mono-tag text-[#6b7568] uppercase">Scientific Binomial</label>
-                  <input
-                    type="text"
-                    required
-                    value={scientificName}
-                    onChange={e => setScientificName(e.target.value)}
-                    placeholder="e.g. Panthera uncia"
-                    className="w-full bg-white border border-[#d8d0c4] rounded px-2 py-1 text-xs font-serif-species italic text-[#1f241d] focus:outline-none focus:border-[#2e4a36]"
-                  />
-                </div>
+                <span className="text-[10px] font-mono-tag text-[#2e4a36] bg-white px-2 py-0.5 rounded border border-[#cfddce]">
+                  {className || 'Taxon'} • {familyName}
+                </span>
               </div>
-            </div>
+            )}
 
-            {/* Collapsible Full Taxonomy Hierarchy */}
-            <div className="mt-2 pt-2 border-t border-[#eee9e0]">
+            {/* Advanced Taxonomy Accordion */}
+            <div className="mt-1.5">
               <button
                 type="button"
                 onClick={() => setShowAdvancedTaxonomy(!showAdvancedTaxonomy)}
-                className="flex items-center gap-1 text-[10px] text-[#576054] hover:text-[#1f241d] font-mono-tag"
+                className="flex items-center gap-1 text-[10px] text-[#576054] hover:text-[#1f241d] font-mono-tag cursor-pointer"
               >
                 <span>Taxonomy: {className || 'Class'} › {orderName || 'Order'} › {familyName || 'Family'}</span>
                 <ChevronDown className={`w-3 h-3 transition-transform ${showAdvancedTaxonomy ? 'rotate-180' : ''}`} />
@@ -504,7 +511,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             {/* Status Selector */}
             <div>
               <label className="block text-[11px] font-mono-tag uppercase tracking-wider text-[#576054] mb-1 font-semibold">
-                2. Status & Venue Context
+                Status
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
@@ -515,14 +522,14 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                       setVenueType('zoo');
                     }
                   }}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md border text-xs font-medium transition-all ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md border text-xs font-medium transition-all cursor-pointer ${
                     wildStatus === 'captive'
                       ? 'bg-[#99582a] text-white border-[#87491d] shadow-xs'
                       : 'bg-white text-[#576054] border-[#d8d0c4] hover:bg-[#faf9f6]'
                   }`}
                 >
                   <Building2 className="w-3.5 h-3.5" />
-                  <span>🏛️ Captive / Zoo</span>
+                  <span>Captive</span>
                 </button>
 
                 <button
@@ -533,14 +540,14 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                       setVenueType('national_park');
                     }
                   }}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md border text-xs font-medium transition-all ${
+                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md border text-xs font-medium transition-all cursor-pointer ${
                     wildStatus === 'wild'
                       ? 'bg-[#2e4a36] text-white border-[#243b2a] shadow-xs'
                       : 'bg-white text-[#576054] border-[#d8d0c4] hover:bg-[#faf9f6]'
                   }`}
                 >
                   <Trees className="w-3.5 h-3.5" />
-                  <span>🌿 Free Wild</span>
+                  <span>Wild</span>
                 </button>
               </div>
             </div>
@@ -548,215 +555,156 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             {/* Venue Type */}
             <div>
               <label className="block text-[11px] font-mono-tag uppercase tracking-wider text-[#576054] mb-1 font-semibold">
-                Venue Type
+                Type
               </label>
               <select
                 value={venueType}
                 onChange={e => setVenueType(e.target.value as VenueType)}
                 className="w-full bg-white border border-[#d8d0c4] rounded-md px-2 py-1.5 text-xs text-[#1f241d] focus:outline-none focus:border-[#2e4a36]"
               >
-                <option value="zoo">Zoological Park</option>
-                <option value="aquarium">Public Aquarium</option>
-                <option value="safari_park">Safari Park / Drive-Thru</option>
+                <option value="zoo">Zoo</option>
+                <option value="aquarium">Aquarium</option>
+                <option value="safari_park">Safari Park</option>
                 <option value="wildlife_sanctuary">Wildlife Sanctuary</option>
                 <option value="national_park">National Park</option>
                 <option value="nature_reserve">Nature Reserve</option>
-                <option value="wilderness">Wilderness / Field</option>
-                <option value="pelagic">Pelagic / Open Ocean</option>
-                <option value="other">Other Location</option>
+                <option value="wilderness">Wilderness</option>
+                <option value="pelagic">Pelagic / Ocean</option>
+                <option value="other">Other</option>
               </select>
             </div>
           </div>
 
-          {/* Venue Name & Preset suggestions */}
-          <div>
-            <label className="block text-[10px] font-mono-tag uppercase text-[#6b7568] mb-1">
-              Venue / Institution / Park Name
-            </label>
-            <input
-              type="text"
-              required
-              value={venueName}
-              onChange={e => setVenueName(e.target.value)}
-              placeholder="e.g. San Diego Zoo Safari Park, Kruger National Park..."
-              className="w-full bg-white border border-[#d8d0c4] rounded-md px-2.5 py-1.5 text-xs text-[#1f241d] focus:outline-none focus:border-[#2e4a36]"
-            />
-            {recentVenues.length > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px] text-[#828d7e]">
-                <span>Recent:</span>
-                {recentVenues.map(v => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setVenueName(v)}
-                    className="bg-[#f2ede4] hover:bg-[#e4dcce] text-[#576054] px-1.5 py-0.2 rounded transition-colors"
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Exhibit / Habitat & Individual Animal Name */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+          {/* Location & Date Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="sm:col-span-2">
               <label className="block text-[10px] font-mono-tag uppercase text-[#6b7568] mb-1">
-                Exhibit / Habitat Zone (Optional)
+                Location
               </label>
               <input
                 type="text"
-                value={exhibitOrHabitat}
-                onChange={e => setExhibitOrHabitat(e.target.value)}
-                placeholder="e.g. African Woods Aviary, River Hippo Pool"
-                className="w-full bg-white border border-[#d8d0c4] rounded-md px-2 py-1.5 text-xs text-[#1f241d] focus:outline-none focus:border-[#2e4a36]"
+                required
+                value={venueName}
+                onChange={e => setVenueName(e.target.value)}
+                placeholder="e.g. San Diego Zoo Safari Park"
+                className="w-full bg-white border border-[#d8d0c4] rounded-md px-2.5 py-1.5 text-xs text-[#1f241d] focus:outline-none focus:border-[#2e4a36]"
               />
+              {recentVenues.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px] text-[#828d7e]">
+                  <span>Recent:</span>
+                  {recentVenues.map(v => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setVenueName(v)}
+                      className="bg-[#f2ede4] hover:bg-[#e4dcce] text-[#576054] px-1.5 py-0.2 rounded transition-colors cursor-pointer"
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>
               <label className="block text-[10px] font-mono-tag uppercase text-[#6b7568] mb-1">
-                Individual Animal Name / ID (Optional)
+                Date
               </label>
-              <input
-                type="text"
-                value={individualNameOrTag}
-                onChange={e => setIndividualNameOrTag(e.target.value)}
-                placeholder="e.g. Fiona, Old Scarface, Banding #402"
-                className="w-full bg-white border border-[#d8d0c4] rounded-md px-2 py-1.5 text-xs text-[#1f241d] focus:outline-none focus:border-[#2e4a36]"
-              />
-            </div>
-          </div>
-
-          {/* 3. DATE, COUNT, SEX & LIFE STAGE */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-[#f0eae0]">
-            <div>
-              <label className="block text-[10px] font-mono-tag uppercase text-[#6b7568] mb-0.5">Date</label>
               <input
                 type="date"
                 required
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                className="w-full bg-white border border-[#d8d0c4] rounded px-2 py-1 text-xs text-[#1f241d]"
+                className="w-full bg-white border border-[#d8d0c4] rounded-md px-2 py-1.5 text-xs text-[#1f241d]"
               />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-mono-tag uppercase text-[#6b7568] mb-0.5">Count</label>
-              <div className="flex items-center">
-                <button
-                  type="button"
-                  onClick={() => setCount(Math.max(1, count - 1))}
-                  className="px-2 py-1 bg-[#f2ede4] border border-[#d8d0c4] rounded-l text-xs hover:bg-[#e6dfd3]"
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  min="1"
-                  value={count}
-                  onChange={e => setCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full bg-white border-y border-[#d8d0c4] py-1 text-center text-xs font-semibold"
-                />
-                <button
-                  type="button"
-                  onClick={() => setCount(count + 1)}
-                  className="px-2 py-1 bg-[#f2ede4] border border-[#d8d0c4] rounded-r text-xs hover:bg-[#e6dfd3]"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-mono-tag uppercase text-[#6b7568] mb-0.5">Sex</label>
-              <select
-                value={sex}
-                onChange={e => setSex(e.target.value as any)}
-                className="w-full bg-white border border-[#d8d0c4] rounded px-1.5 py-1 text-xs"
-              >
-                <option value="unspecified">Unspecified</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="mixed_group">Mixed Group</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-mono-tag uppercase text-[#6b7568] mb-0.5">Stage</label>
-              <select
-                value={lifeStage}
-                onChange={e => setLifeStage(e.target.value as any)}
-                className="w-full bg-white border border-[#d8d0c4] rounded px-1.5 py-1 text-xs"
-              >
-                <option value="adult">Adult</option>
-                <option value="juvenile">Juvenile</option>
-                <option value="subadult">Subadult</option>
-                <option value="chick_cub_larva">Chick / Cub</option>
-                <option value="various">Various</option>
-              </select>
             </div>
           </div>
 
-          {/* Quick Tags */}
+          {/* Real-time GPS Location Status Badge */}
+          <GpsStatusBadge
+            coordinates={coordinates || gps.coordinates}
+            status={gps.status}
+            errorMessage={gps.errorMessage}
+            isLocating={gps.isLocating}
+            onRefresh={gps.refreshGps}
+            onApplyManualCoords={(lat, lng) => {
+              const ok = gps.applyManualCoords(lat, lng);
+              if (ok) {
+                setCoordinates({
+                  latitude: parseFloat(lat),
+                  longitude: parseFloat(lng),
+                  accuracy: 5,
+                  capturedAt: Date.now()
+                });
+              }
+              return ok;
+            }}
+          />
+
+          {/* 3. FIELD NOTES WITH INTEGRATED TAG FUNCTIONALITY */}
           <div>
-            <label className="block text-[10px] font-mono-tag uppercase text-[#6b7568] mb-1">
-              Field Tags & Behaviors
-            </label>
-            <div className="flex flex-wrap gap-1 mb-1.5">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] font-mono-tag uppercase text-[#6b7568] font-bold">
+                Notes & Tags
+              </label>
+              <span className="text-[10px] text-[#828d7e]">
+                Click tags to add or type #tag directly
+              </span>
+            </div>
+
+            {/* Quick Tag Pills that insert/toggle in notes */}
+            <div className="flex flex-wrap items-center gap-1 mb-1.5">
               {PRESET_TAGS.map(t => {
-                const isSelected = selectedTags.includes(t);
+                const active = isTagInNotes(t);
                 return (
                   <button
                     key={t}
                     type="button"
-                    onClick={() => toggleTag(t)}
-                    className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${
-                      isSelected
-                        ? 'bg-[#2e4a36] text-white border-[#2e4a36]'
+                    onClick={() => toggleTagInNotes(t)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors cursor-pointer flex items-center gap-0.5 ${
+                      active
+                        ? 'bg-[#2e4a36] text-white border-[#2e4a36] shadow-2xs'
                         : 'bg-[#faf9f6] text-[#576054] border-[#d8d0c4] hover:bg-[#f2ede4]'
                     }`}
                   >
-                    {isSelected ? '✓ ' : '+ '}
-                    {t}
+                    <Hash className="w-2.5 h-2.5 opacity-70" />
+                    <span>{t}</span>
                   </button>
                 );
               })}
+
+              <div className="inline-flex items-center">
+                <input
+                  type="text"
+                  value={customTagInput}
+                  onChange={e => setCustomTagInput(e.target.value)}
+                  onKeyDown={handleAddCustomTag}
+                  placeholder="+ #tag..."
+                  className="w-20 bg-white border border-[#d8d0c4] rounded px-1.5 py-0.5 text-[10px] text-[#1f241d]"
+                />
+              </div>
             </div>
 
-            <input
-              type="text"
-              value={customTagInput}
-              onChange={e => setCustomTagInput(e.target.value)}
-              onKeyDown={handleAddCustomTag}
-              placeholder="Type custom tag & press Enter..."
-              className="w-full bg-white border border-[#d8d0c4] rounded px-2 py-1 text-xs text-[#1f241d]"
-            />
-          </div>
-
-          {/* Field Notes */}
-          <div>
-            <label className="block text-[10px] font-mono-tag uppercase text-[#6b7568] mb-1">
-              Field Notes & Observations
-            </label>
             <textarea
+              ref={notesTextareaRef}
               rows={2}
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="e.g. Observed hunting dive into tidal pool, distinctive vocalization, breeding plumage..."
+              placeholder="Field observations, behaviors, or hashtags (e.g. #Foraging in canopy, vocalizing)..."
               className="w-full bg-white border border-[#d8d0c4] rounded-md px-2.5 py-1.5 text-xs text-[#1f241d] focus:outline-none focus:border-[#2e4a36]"
             />
           </div>
 
           {/* Photo & Camera Capture Section */}
-          <div className="bg-[#faf9f6] border border-[#e6dfd3] rounded-md p-3 space-y-2">
+          <div className="bg-[#faf9f6] border border-[#e6dfd3] rounded-md p-2.5 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono-tag uppercase text-[#6b7568] font-bold flex items-center gap-1.5">
                 <Camera className="w-3.5 h-3.5 text-[#2e4a36]" />
-                <span>Species Photo / Camera Capture</span>
+                <span>Photo</span>
               </span>
               {photoUrl && (
                 <span className="text-[9px] bg-[#eef3ed] text-[#2e4a36] font-mono-tag font-bold px-1.5 py-0.2 rounded border border-[#cfddce]">
-                  Photo Attached
+                  Attached
                 </span>
               )}
             </div>
@@ -766,20 +714,17 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                 <img
                   src={photoUrl}
                   alt="Captured species"
-                  className="w-16 h-16 object-cover rounded-md border border-[#e6dfd3] shrink-0"
+                  className="w-14 h-14 object-cover rounded-md border border-[#e6dfd3] shrink-0"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-xs text-[#1f241d] truncate">
-                    Photo recorded for {vernacularName || scientificName || 'Observation'}
-                  </div>
-                  <div className="text-[10px] text-[#828d7e] mt-0.5">
-                    Saved directly to species dossier & ledger view
+                    {vernacularName || scientificName || 'Observation Photo'}
                   </div>
                   <div className="flex items-center gap-2 mt-1.5">
                     <button
                       type="button"
                       onClick={() => setIsCameraModalOpen(true)}
-                      className="inline-flex items-center gap-1 text-[11px] text-[#2e4a36] hover:underline font-medium"
+                      className="inline-flex items-center gap-1 text-[11px] text-[#2e4a36] hover:underline font-medium cursor-pointer"
                     >
                       <Camera className="w-3 h-3" />
                       <span>Retake</span>
@@ -787,7 +732,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1 text-[11px] text-[#576054] hover:underline font-medium"
+                      className="inline-flex items-center gap-1 text-[11px] text-[#576054] hover:underline font-medium cursor-pointer"
                     >
                       <Upload className="w-3 h-3" />
                       <span>Replace</span>
@@ -795,7 +740,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setPhotoUrl('')}
-                      className="inline-flex items-center gap-1 text-[11px] text-red-700 hover:underline font-medium ml-auto"
+                      className="inline-flex items-center gap-1 text-[11px] text-red-700 hover:underline font-medium ml-auto cursor-pointer"
                     >
                       <Trash2 className="w-3 h-3" />
                       <span>Remove</span>
@@ -808,29 +753,19 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsCameraModalOpen(true)}
-                  className="flex items-center justify-center gap-2 p-2.5 bg-white hover:bg-[#eef3ed] border border-[#d8d0c4] hover:border-[#2e4a36] rounded-md transition-colors text-left cursor-pointer"
+                  className="flex items-center justify-center gap-2 p-2 bg-white hover:bg-[#eef3ed] border border-[#d8d0c4] hover:border-[#2e4a36] rounded-md transition-colors text-left cursor-pointer"
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#2e4a36] text-white flex items-center justify-center shrink-0">
-                    <Camera className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-xs text-[#1f241d]">Take Photo</div>
-                    <div className="text-[10px] text-[#6b7568]">Device camera</div>
-                  </div>
+                  <Camera className="w-4 h-4 text-[#2e4a36]" />
+                  <span className="font-medium text-xs text-[#1f241d]">Take Photo</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-2 p-2.5 bg-white hover:bg-[#f2ede4] border border-[#d8d0c4] rounded-md transition-colors text-left cursor-pointer"
+                  className="flex items-center justify-center gap-2 p-2 bg-white hover:bg-[#f2ede4] border border-[#d8d0c4] rounded-md transition-colors text-left cursor-pointer"
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#eee9e0] text-[#576054] flex items-center justify-center shrink-0">
-                    <Upload className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-xs text-[#1f241d]">Upload Photo</div>
-                    <div className="text-[10px] text-[#6b7568]">Image file / library</div>
-                  </div>
+                  <Upload className="w-4 h-4 text-[#576054]" />
+                  <span className="font-medium text-xs text-[#1f241d]">Upload Photo</span>
                 </button>
               </div>
             )}
@@ -847,11 +782,11 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-3 border-t border-[#e6dfd3] flex items-center justify-between gap-3">
+          <div className="pt-2.5 border-t border-[#e6dfd3] flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-[#576054] hover:text-[#1f241d] hover:bg-[#f2ede4] rounded transition-colors"
+              className="px-3 py-1.5 text-xs text-[#576054] hover:text-[#1f241d] hover:bg-[#f2ede4] rounded transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -861,7 +796,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#2e4a36] hover:bg-[#243b2a] rounded-md shadow-xs transition-all active:scale-98 cursor-pointer"
             >
               <Check className="w-4 h-4" />
-              <span>{editingObservation ? 'Save Changes' : 'Record in Life List'}</span>
+              <span>{editingObservation ? 'Save Changes' : 'Save Sighting'}</span>
             </button>
           </div>
         </form>

@@ -47,7 +47,7 @@ export const ObservationDetailModal: React.FC<ObservationDetailModalProps> = ({
             <div className="flex items-center gap-1.5 mb-1">
               {observation.isLifer && (
                 <span className="bg-[#fefcbf] text-[#744210] border border-[#f6e05e] px-1.5 py-0.2 rounded text-[10px] font-bold">
-                  ★ Lifer Milestone
+                  ★ Lifer
                 </span>
               )}
               <span className={`px-1.5 py-0.2 rounded text-[10px] font-medium border ${
@@ -55,7 +55,7 @@ export const ObservationDetailModal: React.FC<ObservationDetailModalProps> = ({
                   ? 'bg-[#eef3ed] text-[#2e4a36] border-[#cfddce]'
                   : 'bg-[#faf0e6] text-[#99582a] border-[#ecd8c8]'
               }`}>
-                {isWild ? '🌿 Wild' : '🏛️ Captive'}
+                {isWild ? 'Wild' : 'Captive'}
               </span>
               <span className="text-[10px] font-mono-tag text-[#828d7e]">
                 {observation.taxonomy?.class}

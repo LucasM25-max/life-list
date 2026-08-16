@@ -1,182 +1,261 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
-import { EnclosureRecord, EnclosureSpecies, Observation } from '../types';
+import { EnclosureRecord, Observation, TripRecord, Coordinates } from '../types';
+import { formatCoordinates, getAccurateDeviceLocation } from '../utils/geoUtils';
 import { 
   MapPin, 
   Layers, 
+  Calendar, 
+  Clock, 
   Eye, 
   EyeOff, 
   Check, 
   X, 
-  Compass, 
-  ExternalLink,
-  ChevronRight,
-  Sparkles,
-  Calendar,
-  Clock
+  ExternalLink, 
+  Crosshair, 
+  History, 
+  ChevronRight, 
+  Trees, 
+  Building2, 
+  AlertCircle,
+  Navigation,
+  Compass,
+  Maximize2
 } from 'lucide-react';
 
 interface EnclosureMapViewProps {
   enclosures: EnclosureRecord[];
   observations: Observation[];
+  trips?: TripRecord[];
+  activeTrip?: TripRecord | null;
   selectedVenueName?: string;
   onToggleSpeciesSeen: (enclosureId: string, speciesId: string) => void;
   onSelectSpeciesDossier: (scientificName: string) => void;
   onSelectObservation: (obs: Observation) => void;
 }
 
-// Custom Paw Print SVG generator for Leaflet DivIcon
-function createPawPrintIcon(seenCount: number, totalCount: number, isSelected: boolean) {
-  const isAllSeen = seenCount === totalCount && totalCount > 0;
+// Leaflet custom SVG paw-print icon generator
+const createPawPrintIcon = (
+  seenCount: number, 
+  totalCount: number, 
+  isSelected: boolean = false, 
+  isHistorical: boolean = false
+) => {
+  const isFullySeen = seenCount === totalCount && totalCount > 0;
   const isPartiallySeen = seenCount > 0 && seenCount < totalCount;
   
-  let bgColor = '#2e4a36'; // Pine green
-  let borderColor = '#ffffff';
-  let badgeColor = '#1f3424';
+  let bgColor = '#2e4a36'; // deep forest green (default / fully seen)
+  let ringColor = isSelected ? '#10b981' : '#ffffff';
+  let badgeColor = '#ffffff';
+  let textColor = '#2e4a36';
 
-  if (isPartiallySeen) {
-    bgColor = '#b45309'; // Amber
-    badgeColor = '#78350f';
-  } else if (seenCount === 0 && totalCount > 0) {
-    bgColor = '#475569'; // Slate
-    badgeColor = '#334155';
+  if (isHistorical) {
+    bgColor = '#526053'; // muted slate for previous visit
+  } else if (!isFullySeen && isPartiallySeen) {
+    bgColor = '#b45309'; // warm amber for partially seen
+  } else if (totalCount > 0 && seenCount === 0) {
+    bgColor = '#78716c'; // neutral stone for missed all
   }
 
-  const pawSvg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="18" height="18">
-      <!-- Main pad -->
-      <path d="M12 11.5c-2.4 0-4.3 1.9-4.3 4.2 0 1.8 1.4 3.3 3.3 3.3.6 0 1.1-.1 1-.1.1 0 .6.1 1 .1 1.9 0 3.3-1.5 3.3-3.3 0-2.3-1.9-4.2-4.3-4.2z" />
-      <!-- Toe pads -->
-      <ellipse cx="6.5" cy="9.5" rx="1.8" ry="2.2" transform="rotate(-20 6.5 9.5)" />
-      <ellipse cx="10" cy="6.5" rx="1.8" ry="2.2" transform="rotate(-8 10 6.5)" />
-      <ellipse cx="14" cy="6.5" rx="1.8" ry="2.2" transform="rotate(8 14 6.5)" />
-      <ellipse cx="17.5" cy="9.5" rx="1.8" ry="2.2" transform="rotate(20 17.5 9.5)" />
-    </svg>
+  const iconSize = isSelected ? 44 : 36;
+  const pinSvg = `
+    <div style="position: relative; width: ${iconSize}px; height: ${iconSize}px; transform: translate(-50%, -50%); cursor: pointer;">
+      <div style="
+        width: ${iconSize}px; 
+        height: ${iconSize}px; 
+        border-radius: 50%; 
+        background: ${bgColor}; 
+        border: ${isSelected ? '3px' : '2px'} solid ${ringColor}; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        transition: transform 0.2s ease;
+        ${isHistorical ? 'border-style: dashed;' : ''}
+      ">
+        <svg width="${isSelected ? '22' : '18'}" height="${isSelected ? '22' : '18'}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="15" r="4" fill="white" />
+          <circle cx="6.5" cy="9.5" r="2.5" fill="white" />
+          <circle cx="17.5" cy="9.5" r="2.5" fill="white" />
+          <circle cx="10" cy="5.5" r="2" fill="white" />
+          <circle cx="14" cy="5.5" r="2" fill="white" />
+        </svg>
+      </div>
+      ${totalCount > 0 ? `
+        <div style="
+          position: absolute; 
+          bottom: -4px; 
+          right: -4px; 
+          background: ${badgeColor}; 
+          color: ${textColor}; 
+          font-size: 10px; 
+          font-weight: 800; 
+          font-family: monospace; 
+          padding: 1px 5px; 
+          border-radius: 9999px; 
+          border: 1px solid #d1d5db; 
+          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+          white-space: nowrap;
+        ">
+          ${seenCount}/${totalCount}
+        </div>
+      ` : ''}
+    </div>
   `;
 
   return L.divIcon({
-    className: 'custom-paw-marker-container',
-    html: `
-      <div style="
-        position: relative;
-        width: 38px;
-        height: 38px;
-        background-color: ${bgColor};
-        border: 2.5px solid ${borderColor};
-        border-radius: 50% 50% 50% 0;
-        transform: rotate(-45deg) ${isSelected ? 'scale(1.2)' : 'scale(1)'};
-        box-shadow: 0 4px 10px rgba(0,0,0,0.35);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: transform 0.2s ease;
-      ">
-        <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
-          ${pawSvg}
-        </div>
-        ${totalCount > 0 ? `
-          <div style="
-            position: absolute;
-            top: -6px;
-            right: -6px;
-            background: ${badgeColor};
-            color: #ffffff;
-            font-size: 10px;
-            font-weight: 700;
-            font-family: monospace;
-            padding: 1px 4px;
-            border-radius: 9999px;
-            border: 1.5px solid #ffffff;
-            transform: rotate(45deg);
-          ">
-            ${seenCount}/${totalCount}
-          </div>
-        ` : ''}
-      </div>
-    `,
-    iconSize: [38, 38],
-    iconAnchor: [19, 38],
-    popupAnchor: [0, -38]
+    html: pinSvg,
+    className: 'custom-paw-marker',
+    iconSize: [0, 0],
+    iconAnchor: [0, 0]
   });
-}
-
-// Fallback zoo coordinates generator if no GPS is provided
-const DEFAULT_ZOO_COORDINATES: Record<string, [number, number]> = {
-  'singapore zoo': [1.4043, 103.7930],
-  'mandai wildlife reserve': [1.4043, 103.7930],
-  'san diego zoo safari park': [33.0975, -116.9957],
-  'san diego zoo': [32.7353, -117.1490],
-  'chester zoo': [53.2274, -2.8841],
-  'london zoo': [51.5353, -0.1534],
-  'zsl london zoo': [51.5353, -0.1534],
-  'taronga zoo': [-33.8435, 151.2413],
-  'bronx zoo': [40.8506, -73.8770],
-  'berlin zoological garden': [52.5080, 13.3376],
-  'serengeti national park': [-2.3333, 34.8333],
-  'kruger national park': [-23.9884, 31.5547]
 };
 
-export function EnclosureMapView({
+// Device live location marker
+const createUserLocationIcon = () => {
+  const userSvg = `
+    <div style="position: relative; width: 24px; height: 24px; transform: translate(-50%, -50%);">
+      <div style="position: absolute; inset: 0; border-radius: 50%; background: #3b82f6; opacity: 0.3; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+      <div style="width: 18px; height: 18px; margin: 3px; border-radius: 50%; background: #2563eb; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+    </div>
+  `;
+  return L.divIcon({
+    html: userSvg,
+    className: 'user-loc-marker',
+    iconSize: [0, 0],
+    iconAnchor: [0, 0]
+  });
+};
+
+export const EnclosureMapView: React.FC<EnclosureMapViewProps> = ({
   enclosures,
   observations,
+  trips = [],
+  activeTrip,
   selectedVenueName,
   onToggleSpeciesSeen,
   onSelectSpeciesDossier,
   onSelectObservation
-}: EnclosureMapViewProps) {
+}) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
 
   const [activeEnclosure, setActiveEnclosure] = useState<EnclosureRecord | null>(null);
   const [mapTileStyle, setMapTileStyle] = useState<'streets' | 'satellite' | 'terrain'>('streets');
+  const [selectedVisitFilter, setSelectedVisitFilter] = useState<string>('combined');
+  const [deviceLocation, setDeviceLocation] = useState<Coordinates | null>(null);
+  const [isLocatingDevice, setIsLocatingDevice] = useState(false);
 
-  // Filter enclosures matching venue if selected
-  const filteredEnclosures = selectedVenueName
-    ? enclosures.filter(e => e.venueName.trim().toLowerCase() === selectedVenueName.trim().toLowerCase())
-    : enclosures;
+  // Fetch device GPS on mount for map centering if needed
+  useEffect(() => {
+    getAccurateDeviceLocation()
+      .then(coords => setDeviceLocation(coords))
+      .catch(() => {});
+  }, []);
 
-  // Filter observations matching venue if selected
-  const venueObservations = selectedVenueName
-    ? observations.filter(o => o.venueName.trim().toLowerCase() === selectedVenueName.trim().toLowerCase())
-    : observations;
+  // Filter enclosures for current venue
+  const venueEnclosures = useMemo(() => {
+    return selectedVenueName
+      ? enclosures.filter(e => e.venueName.trim().toLowerCase() === selectedVenueName.trim().toLowerCase())
+      : enclosures;
+  }, [enclosures, selectedVenueName]);
 
-  // Compute resolved coordinates for each enclosure
-  const enclosuresWithCoords = filteredEnclosures.map((enc, idx) => {
-    if (enc.coordinates && enc.coordinates.latitude && enc.coordinates.longitude) {
-      return {
-        ...enc,
-        resolvedCoords: [enc.coordinates.latitude, enc.coordinates.longitude] as [number, number]
-      };
-    }
+  // Filter observations for current venue
+  const venueObservations = useMemo(() => {
+    return selectedVenueName
+      ? observations.filter(o => o.venueName.trim().toLowerCase() === selectedVenueName.trim().toLowerCase())
+      : observations;
+  }, [observations, selectedVenueName]);
+
+  // Identify distinct visits / dates for this venue
+  const distinctVisits = useMemo(() => {
+    const visits = new Map<string, { label: string; date: string; tripId?: string; isCurrent: boolean }>();
     
-    // Check if venue has known base coords and offset slightly by index
-    const vKey = enc.venueName.trim().toLowerCase();
-    const base = DEFAULT_ZOO_COORDINATES[vKey] || [1.4043, 103.7930]; // default Singapore Zoo
-    const angle = (idx * 65 * Math.PI) / 180;
-    const distance = 0.0008 * (idx + 1); // ~80m offset
-    const offsetLat = base[0] + distance * Math.cos(angle);
-    const offsetLng = base[1] + distance * Math.sin(angle);
-    return {
-      ...enc,
-      resolvedCoords: [offsetLat, offsetLng] as [number, number]
-    };
-  });
+    const isActiveVenue = activeTrip && (!selectedVenueName || activeTrip.venueName.trim().toLowerCase() === selectedVenueName.trim().toLowerCase());
+    if (isActiveVenue) {
+      visits.set('current', {
+        label: `Active Trip (${activeTrip.startDate})`,
+        date: activeTrip.startDate,
+        tripId: activeTrip.id,
+        isCurrent: true
+      });
+    }
+
+    venueEnclosures.forEach(e => {
+      const key = e.tripId || e.date;
+      if (!visits.has(key)) {
+        const isCur = Boolean(activeTrip && (e.tripId === activeTrip.id || (e.date === activeTrip.startDate && isActiveVenue)));
+        visits.set(key, {
+          label: isCur ? `Active Trip (${e.date})` : `Visit on ${e.date}`,
+          date: e.date,
+          tripId: e.tripId,
+          isCurrent: isCur
+        });
+      }
+    });
+
+    return Array.from(visits.entries()).map(([key, val]) => ({ key, ...val }));
+  }, [venueEnclosures, activeTrip, selectedVenueName]);
+
+  // Filter enclosures based on visit selection
+  const filteredByVisitEnclosures = useMemo(() => {
+    if (selectedVisitFilter === 'combined') {
+      return venueEnclosures;
+    }
+    if (selectedVisitFilter === 'current') {
+      if (!activeTrip) return venueEnclosures;
+      return venueEnclosures.filter(e => 
+        e.tripId === activeTrip.id || 
+        (e.createdAt >= activeTrip.startTime && e.venueName.trim().toLowerCase() === activeTrip.venueName.trim().toLowerCase())
+      );
+    }
+    return venueEnclosures.filter(e => e.tripId === selectedVisitFilter || e.date === selectedVisitFilter);
+  }, [venueEnclosures, selectedVisitFilter, activeTrip]);
+
+  // Filter enclosures with valid GPS
+  const enclosuresWithCoords = useMemo(() => {
+    return filteredByVisitEnclosures
+      .filter(enc => 
+        enc.coordinates && 
+        typeof enc.coordinates.latitude === 'number' && 
+        typeof enc.coordinates.longitude === 'number' && 
+        !isNaN(enc.coordinates.latitude) && 
+        !isNaN(enc.coordinates.longitude)
+      )
+      .map(enc => {
+        const isHistorical = Boolean(
+          activeTrip && 
+          enc.venueName.trim().toLowerCase() === activeTrip.venueName.trim().toLowerCase() && 
+          enc.tripId !== activeTrip.id && 
+          enc.createdAt < activeTrip.startTime
+        );
+
+        return {
+          ...enc,
+          isHistorical,
+          resolvedCoords: [enc.coordinates!.latitude, enc.coordinates!.longitude] as [number, number]
+        };
+      });
+  }, [filteredByVisitEnclosures, activeTrip]);
 
   // Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
+      const initialCenter: [number, number] = deviceLocation 
+        ? [deviceLocation.latitude, deviceLocation.longitude] 
+        : [51.5074, -0.1278];
+
       const map = L.map(mapContainerRef.current, {
-        center: [1.4043, 103.7930],
-        zoom: 16,
+        center: initialCenter,
+        zoom: 15,
         zoomControl: true,
         attributionControl: false
       });
 
-      // Default OpenStreetMap / CartoDB tiles
       const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
       L.tileLayer(tileUrl, {
         maxZoom: 19,
@@ -187,13 +266,9 @@ export function EnclosureMapView({
       markersLayerRef.current = markersLayer;
       mapInstanceRef.current = map;
     }
-
-    return () => {
-      // Map cleanup on unmount handled gracefully
-    };
   }, []);
 
-  // Update Tile Layer if user toggles satellite/streets
+  // Update Tile Layer if user toggles style
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
@@ -217,251 +292,390 @@ export function EnclosureMapView({
     }).addTo(map);
   }, [mapTileStyle]);
 
-  // Update Paw Print Markers whenever enclosures or active selection change
+  // Update Paw Print Markers
   useEffect(() => {
     if (!mapInstanceRef.current || !markersLayerRef.current) return;
     const markersLayer = markersLayerRef.current;
     markersLayer.clearLayers();
 
-    if (enclosuresWithCoords.length === 0) return;
+    if (enclosuresWithCoords.length === 0) {
+      if (deviceLocation && mapInstanceRef.current) {
+        mapInstanceRef.current.setView([deviceLocation.latitude, deviceLocation.longitude], 15);
+      }
+      return;
+    }
 
     const bounds = L.latLngBounds([]);
 
     enclosuresWithCoords.forEach((enc) => {
-      const seenCount = enc.speciesList.filter(s => s.isSeen).length;
-      const totalCount = enc.speciesList.length;
+      const encSeen = enc.speciesList.filter(s => s.isSeen).length;
+      const encTotal = enc.speciesList.length;
       const isSelected = activeEnclosure?.id === enc.id;
 
-      const icon = createPawPrintIcon(seenCount, totalCount, isSelected);
+      const icon = createPawPrintIcon(encSeen, encTotal, isSelected, enc.isHistorical);
       const marker = L.marker(enc.resolvedCoords, { icon });
 
       marker.on('click', () => {
         setActiveEnclosure(enc);
-        mapInstanceRef.current?.panTo(enc.resolvedCoords, { animate: true, duration: 0.5 });
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.panTo(enc.resolvedCoords, { animate: true });
+        }
       });
 
-      marker.bindTooltip(`
-        <div style="font-weight:bold; font-size:11px; font-family:sans-serif; color:#1f241d;">
-          🐾 ${enc.enclosureName}
-        </div>
-        <div style="font-size:10px; color:#576054;">
-          ${seenCount}/${totalCount} species spotted
-        </div>
-      `, { direction: 'top', offset: [0, -32] });
+      marker.bindTooltip(`<b>🐾 ${enc.enclosureName}</b><br/>${encSeen}/${encTotal} species spotted`, {
+        direction: 'top',
+        offset: [0, -18]
+      });
 
       marker.addTo(markersLayer);
       bounds.extend(enc.resolvedCoords);
     });
 
-    // Fit map bounds
-    if (bounds.isValid()) {
+    if (deviceLocation) {
+      const userMarker = L.marker([deviceLocation.latitude, deviceLocation.longitude], {
+        icon: createUserLocationIcon()
+      });
+      userMarker.bindTooltip('📍 Your Current GPS Location', { direction: 'top' });
+      userMarker.addTo(markersLayer);
+      userMarkerRef.current = userMarker;
+    }
+
+    // Auto-fit bounds
+    if (bounds.isValid() && !activeEnclosure) {
       mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
     }
-  }, [enclosuresWithCoords, activeEnclosure]);
+  }, [enclosuresWithCoords, activeEnclosure, deviceLocation]);
+
+  // Handle "Center on My Location"
+  const handleLocateMe = async () => {
+    setIsLocatingDevice(true);
+    try {
+      const coords = await getAccurateDeviceLocation();
+      setIsLocatingDevice(false);
+      setDeviceLocation(coords);
+
+      if (mapInstanceRef.current) {
+        const latLng: [number, number] = [coords.latitude, coords.longitude];
+        mapInstanceRef.current.setView(latLng, 17, { animate: true });
+
+        if (userMarkerRef.current) {
+          userMarkerRef.current.setLatLng(latLng);
+        } else {
+          const userMarker = L.marker(latLng, { icon: createUserLocationIcon() });
+          userMarker.bindTooltip('📍 Your Current GPS Location', { direction: 'top' });
+          userMarker.addTo(mapInstanceRef.current);
+          userMarkerRef.current = userMarker;
+        }
+      }
+    } catch (err: any) {
+      setIsLocatingDevice(false);
+      if (err.message === 'denied') {
+        alert('Browser location permission was denied. Please allow location in your address bar.');
+      } else {
+        alert('Could not determine current GPS position.');
+      }
+    }
+  };
+
+  const handleFocusEnclosure = (enc: EnclosureRecord) => {
+    setActiveEnclosure(enc);
+    if (enc.coordinates && mapInstanceRef.current) {
+      mapInstanceRef.current.setView([enc.coordinates.latitude, enc.coordinates.longitude], 17, { animate: true });
+    }
+  };
 
   return (
-    <div className="relative w-full h-[620px] rounded-xl overflow-hidden border border-[#d8d0c4] bg-[#eae5dc] flex flex-col sm:flex-row shadow-sm">
+    <div className="relative w-full h-[580px] rounded-2xl overflow-hidden border border-[#e6dfd3] bg-[#eae5dc] flex flex-col md:flex-row shadow-xs">
       
-      {/* Interactive Map Area */}
-      <div className="relative flex-1 h-full min-h-[350px]">
+      {/* Interactive Map Canvas */}
+      <div className="relative flex-1 h-full min-h-[340px]">
         <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-        {/* Map View Controls Overlay */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-white/95 backdrop-blur-xs border border-[#cfddce] rounded-lg p-1 shadow-md text-xs">
+        {/* Top-Left: Clean Visit Filter Pill */}
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-white/95 backdrop-blur-xs border border-[#d8d0c4] rounded-xl p-1 shadow-sm text-xs">
           <button
-            onClick={() => setMapTileStyle('streets')}
-            className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-              mapTileStyle === 'streets' ? 'bg-[#2e4a36] text-white font-bold' : 'text-[#576054] hover:bg-slate-100'
+            onClick={() => setSelectedVisitFilter('combined')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
+              selectedVisitFilter === 'combined'
+                ? 'bg-[#2e4a36] text-white shadow-2xs font-bold'
+                : 'text-[#576054] hover:bg-slate-100'
             }`}
           >
-            Streets
+            All Exhibits ({venueEnclosures.length})
           </button>
-          <button
-            onClick={() => setMapTileStyle('satellite')}
-            className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-              mapTileStyle === 'satellite' ? 'bg-[#2e4a36] text-white font-bold' : 'text-[#576054] hover:bg-slate-100'
-            }`}
-          >
-            Satellite
-          </button>
-          <button
-            onClick={() => setMapTileStyle('terrain')}
-            className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-              mapTileStyle === 'terrain' ? 'bg-[#2e4a36] text-white font-bold' : 'text-[#576054] hover:bg-slate-100'
-            }`}
-          >
-            Terrain
-          </button>
+
+          {activeTrip && (
+            <button
+              onClick={() => setSelectedVisitFilter('current')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                selectedVisitFilter === 'current'
+                  ? 'bg-emerald-700 text-white shadow-2xs font-bold'
+                  : 'text-emerald-800 hover:bg-emerald-50'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Current Trip</span>
+            </button>
+          )}
+
+          {distinctVisits.length > 1 && (
+            <select
+              value={selectedVisitFilter}
+              onChange={e => setSelectedVisitFilter(e.target.value)}
+              className="bg-transparent text-[11px] text-[#576054] font-medium border-l border-[#d8d0c4] pl-2 pr-1 py-1 focus:outline-none cursor-pointer"
+            >
+              <option value="combined">Combined Map</option>
+              {distinctVisits.map(v => (
+                <option key={v.key} value={v.key}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
-        {/* Map Legend Floating Pill */}
-        <div className="absolute bottom-3 left-3 z-10 bg-white/95 backdrop-blur-xs border border-[#d8d0c4] rounded-lg px-3 py-1.5 shadow-md flex items-center gap-3 text-[11px] text-[#576054]">
-          <span className="font-bold font-serif-species text-[#1f241d] flex items-center gap-1">
-            🐾 Paw Print Legend:
+        {/* Top-Right: Map Style & Locate Me */}
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+          <button
+            onClick={handleLocateMe}
+            disabled={isLocatingDevice}
+            className="bg-white/95 backdrop-blur-xs border border-[#d8d0c4] rounded-xl px-2.5 py-1.5 shadow-sm text-xs font-bold text-[#2e4a36] hover:bg-[#eef3ed] transition-colors cursor-pointer flex items-center gap-1"
+            title="Center on My Live Device GPS Location"
+          >
+            <Crosshair className={`w-3.5 h-3.5 ${isLocatingDevice ? 'animate-spin text-blue-600' : 'text-[#2e4a36]'}`} />
+            <span className="hidden sm:inline text-[11px]">GPS</span>
+          </button>
+
+          <div className="flex items-center bg-white/95 backdrop-blur-xs border border-[#d8d0c4] rounded-xl p-0.5 shadow-sm text-xs">
+            <button
+              onClick={() => setMapTileStyle('streets')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
+                mapTileStyle === 'streets' ? 'bg-[#2e4a36] text-white' : 'text-[#576054] hover:bg-slate-100'
+              }`}
+            >
+              Streets
+            </button>
+            <button
+              onClick={() => setMapTileStyle('satellite')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
+                mapTileStyle === 'satellite' ? 'bg-[#2e4a36] text-white' : 'text-[#576054] hover:bg-slate-100'
+              }`}
+            >
+              Satellite
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom-Left: Sleek Map Legend */}
+        <div className="absolute bottom-3 left-3 z-10 bg-white/95 backdrop-blur-xs border border-[#d8d0c4] rounded-xl px-3 py-1.5 shadow-sm flex items-center gap-3 text-[11px] text-[#576054]">
+          <span className="font-bold text-[#1f241d] flex items-center gap-1">
+            🐾 Pins:
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-[#2e4a36]" />
-            <span>All Seen</span>
+            <span>Spotted All</span>
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-[#b45309]" />
-            <span>Partially Seen</span>
+            <span>Partial</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#475569]" />
-            <span>Sign Only</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#78716c]" />
+            <span>Missed</span>
           </span>
         </div>
       </div>
 
-      {/* Selected Enclosure Details Sidebar / Drawer */}
-      <div className="w-full sm:w-[360px] bg-[#faf7f2] border-t sm:border-t-0 sm:border-l border-[#e2dacd] flex flex-col h-[320px] sm:h-full z-10">
+      {/* Exhibit Details & Browser Sidebar */}
+      <div className="w-full md:w-[360px] bg-[#faf7f2] border-t md:border-t-0 md:border-l border-[#e2dacd] flex flex-col h-[320px] md:h-full z-10">
         
         {activeEnclosure ? (
           <div className="flex flex-col h-full overflow-hidden">
             
-            {/* Enclosure Header */}
+            {/* Exhibit Header */}
             <div className="p-3.5 bg-white border-b border-[#e2dacd] shrink-0">
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="text-[10px] font-mono-tag uppercase tracking-wider text-[#6b7568] font-bold">
-                    {activeEnclosure.venueName}
-                  </span>
-                  <h3 className="font-bold text-sm text-[#1f241d] font-serif-species flex items-center gap-1.5 mt-0.5">
-                    <span>🐾 {activeEnclosure.enclosureName}</span>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-sm text-[#1f241d] font-serif-species truncate">
+                    🐾 {activeEnclosure.enclosureName}
                   </h3>
+                  <div className="flex items-center gap-2 text-[10px] text-[#6b7568] mt-1 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-[#2e4a36]" />
+                      <span>{activeEnclosure.date}</span>
+                    </span>
+                    {activeEnclosure.coordinates && (
+                      <span className="flex items-center gap-1 text-[#2e4a36] font-mono bg-[#eef3ed] px-1.5 py-0.2 rounded">
+                        <Navigation className="w-2.5 h-2.5" />
+                        <span>{formatCoordinates(activeEnclosure.coordinates)}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
+
                 <button
                   onClick={() => setActiveEnclosure(null)}
-                  className="text-[#828d7e] hover:text-[#1f241d] p-1 rounded-md"
+                  className="text-[#828d7e] hover:text-[#1f241d] p-1 rounded-md cursor-pointer shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Date / Time / Stats bar */}
-              <div className="flex items-center gap-3 mt-2 text-[10px] text-[#6b7568]">
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-[#2e4a36]" />
-                  <span>{activeEnclosure.date}</span>
-                </span>
-                {activeEnclosure.time && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-[#2e4a36]" />
-                    <span>{activeEnclosure.time}</span>
-                  </span>
-                )}
-                <span className="ml-auto font-mono font-bold bg-[#eef3ed] text-[#2e4a36] px-1.5 py-0.2 rounded border border-[#cfddce]">
+              {/* Spotted badge */}
+              <div className="mt-2 flex items-center justify-between text-xs">
+                <span className="text-[11px] font-semibold text-[#576054]">Exhibit Checklist:</span>
+                <span className="font-mono font-bold text-[#2e4a36] bg-[#eef3ed] px-2 py-0.5 rounded-full border border-[#cfddce] text-[11px]">
                   {activeEnclosure.speciesList.filter(s => s.isSeen).length} / {activeEnclosure.speciesList.length} Spotted
                 </span>
               </div>
             </div>
 
-            {/* Species List */}
+            {/* Species Checklist */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2 text-xs">
-              <div className="font-semibold text-[11px] text-[#576054] flex items-center justify-between pb-1 border-b border-[#eee7db]">
-                <span>Species in this Enclosure:</span>
-                <span className="text-[10px] text-[#828d7e]">
-                  Click check to toggle sighting
-                </span>
-              </div>
+              {activeEnclosure.speciesList.map((sp) => {
+                const obs = venueObservations.find(o => o.scientificName.toLowerCase() === sp.scientificName.toLowerCase() || o.id === sp.observationId);
+                const hasPhoto = sp.photoUrl || obs?.photoUrl;
 
-              {activeEnclosure.speciesList.map((sp) => (
-                <div
-                  key={sp.id}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    sp.isSeen
-                      ? 'bg-white border-[#2e4a36]/30 shadow-2xs'
-                      : 'bg-[#f4efe6] border-[#ded5c8] opacity-85'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    
-                    {/* Toggle Checkbox & Names */}
-                    <div className="flex items-start gap-2 flex-1 min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => onToggleSpeciesSeen(activeEnclosure.id, sp.id)}
-                        className={`mt-0.5 p-1 rounded transition-colors cursor-pointer shrink-0 ${
-                          sp.isSeen
-                            ? 'bg-[#2e4a36] text-white hover:bg-[#243b2a]'
-                            : 'bg-white border border-[#b8ae9f] text-transparent hover:text-slate-400'
-                        }`}
-                        title={sp.isSeen ? 'Mark as Not Seen' : 'Mark as Seen'}
-                      >
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      </button>
-
-                      <div className="flex-1 min-w-0">
+                return (
+                  <div
+                    key={sp.id}
+                    className={`p-2.5 rounded-xl border transition-all ${
+                      sp.isSeen
+                        ? 'bg-white border-[#2e4a36]/30 shadow-2xs'
+                        : 'bg-[#f4efe6] border-[#ded5c8] opacity-90'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        {/* Toggle Checkbox */}
                         <button
                           type="button"
-                          onClick={() => onSelectSpeciesDossier(sp.scientificName)}
-                          className="font-bold text-[#1f241d] hover:text-[#2e4a36] hover:underline text-left text-xs font-serif-species block truncate"
+                          onClick={() => onToggleSpeciesSeen(activeEnclosure.id, sp.id)}
+                          className={`mt-0.5 p-1 rounded-md transition-colors cursor-pointer shrink-0 ${
+                            sp.isSeen
+                              ? 'bg-[#2e4a36] text-white hover:bg-[#243b2a]'
+                              : 'bg-white border border-[#b8ae9f] text-transparent hover:text-slate-400'
+                          }`}
+                          title={sp.isSeen ? 'Mark as Not Seen' : 'Mark as Seen'}
                         >
-                          {sp.vernacularName}
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
                         </button>
-                        <div className="italic text-[10px] text-[#576054] truncate">
-                          {sp.scientificName}
-                        </div>
-                        {sp.taxonomy?.class && (
-                          <div className="text-[9px] text-[#788574] mt-0.5">
-                            {sp.taxonomy.class} {sp.taxonomy.order ? `• ${sp.taxonomy.order}` : ''}
+
+                        <div className="flex-1 min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => onSelectSpeciesDossier(sp.scientificName)}
+                            className="font-bold text-[#1f241d] hover:text-[#2e4a36] hover:underline text-left text-xs font-serif-species block truncate"
+                          >
+                            {sp.vernacularName}
+                          </button>
+                          <div className="italic text-[10px] text-[#576054] truncate">
+                            {sp.scientificName}
                           </div>
+                          {sp.taxonomy?.class && (
+                            <div className="text-[9px] text-[#788574] mt-0.5">
+                              {sp.taxonomy.class} {sp.taxonomy.family ? `· ${sp.taxonomy.family}` : ''}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Photo / Status */}
+                      <div className="shrink-0">
+                        {hasPhoto ? (
+                          <img
+                            src={hasPhoto}
+                            alt={sp.vernacularName}
+                            className="w-8 h-8 rounded-lg object-cover border border-[#d8d0c4]"
+                          />
+                        ) : (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 ${
+                            sp.isSeen 
+                              ? 'bg-[#eef3ed] text-[#2e4a36]' 
+                              : 'bg-amber-100 text-amber-900'
+                          }`}>
+                            {sp.isSeen ? 'Spotted' : 'Missed'}
+                          </span>
                         )}
                       </div>
                     </div>
-
-                    {/* Status Badge */}
-                    <div className="shrink-0 flex flex-col items-end gap-1">
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 ${
-                        sp.isSeen 
-                          ? 'bg-[#eef3ed] text-[#2e4a36] border border-[#cfddce]' 
-                          : 'bg-amber-50 text-amber-800 border border-amber-200'
-                      }`}>
-                        {sp.isSeen ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
-                        <span>{sp.isSeen ? 'Seen' : 'Missed'}</span>
-                      </span>
-                    </div>
-
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Bottom Actions */}
             <div className="p-2.5 bg-white border-t border-[#e2dacd] flex items-center justify-between text-xs shrink-0">
-              <span className="text-[11px] text-[#6b7568]">
-                {activeEnclosure.speciesList.length} species documented
-              </span>
+              <button
+                onClick={() => setActiveEnclosure(null)}
+                className="text-[11px] text-[#6b7568] hover:text-[#1f241d] font-semibold"
+              >
+                Back to Exhibit List
+              </button>
               <button
                 onClick={() => {
-                  // Find first observation linked to this enclosure
                   const obs = venueObservations.find(o => o.enclosureId === activeEnclosure.id);
                   if (obs) onSelectObservation(obs);
                 }}
                 className="inline-flex items-center gap-1 text-[11px] font-bold text-[#2e4a36] hover:underline cursor-pointer"
               >
-                <span>View Full Log</span>
+                <span>Observation Log</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
 
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-[#6b7568] space-y-2">
-            <div className="w-12 h-12 rounded-full bg-[#eef3ed] border border-[#cfddce] flex items-center justify-center text-[#2e4a36]">
-              <Compass className="w-6 h-6 animate-spin-slow" />
+          /* Exhibit Browser (When no marker is selected) */
+          <div className="flex flex-col h-full overflow-hidden">
+            <div className="p-3 bg-white border-b border-[#e2dacd] shrink-0">
+              <h4 className="font-bold text-xs text-[#1f241d] font-serif-species flex items-center gap-1.5">
+                <Compass className="w-4 h-4 text-[#2e4a36]" />
+                <span>Exhibits in this Location ({filteredByVisitEnclosures.length})</span>
+              </h4>
+              <p className="text-[10px] text-[#6b7568] mt-0.5">
+                Click any exhibit to center and inspect on the map:
+              </p>
             </div>
-            <h4 className="font-bold text-sm text-[#1f241d] font-serif-species">
-              Select an Enclosure Marker
-            </h4>
-            <p className="text-xs max-w-[220px]">
-              Click any 🐾 Paw Print icon on the map to explore the species roster held in that exhibit.
-            </p>
+
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+              {filteredByVisitEnclosures.map(enc => {
+                const encSeen = enc.speciesList.filter(s => s.isSeen).length;
+                const encTotal = enc.speciesList.length;
+
+                return (
+                  <button
+                    key={enc.id}
+                    onClick={() => handleFocusEnclosure(enc)}
+                    className="w-full text-left p-2.5 rounded-xl bg-white border border-[#e2dacd] hover:border-[#2e4a36] hover:bg-[#faf9f6] flex items-center justify-between text-xs transition-all cursor-pointer shadow-2xs group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-[#1f241d] group-hover:text-[#2e4a36] truncate">
+                        🐾 {enc.enclosureName}
+                      </div>
+                      <div className="text-[10px] text-[#6b7568] flex items-center gap-1.5 mt-0.5">
+                        <span>{enc.date}</span>
+                        {enc.coordinates && <span className="text-[#2e4a36]">📍 GPS</span>}
+                      </div>
+                    </div>
+
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ml-2 border ${
+                      encSeen === encTotal
+                        ? 'bg-[#eef3ed] text-[#2e4a36] border-[#cfddce]'
+                        : encSeen > 0
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : 'bg-slate-50 text-slate-600 border-slate-200'
+                    }`}>
+                      {encSeen}/{encTotal}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
       </div>
     </div>
   );
-}
+};

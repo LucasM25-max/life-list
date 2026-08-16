@@ -108,10 +108,10 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
           <div className="flex items-center gap-2">
             <Download className="w-4 h-4 text-[#2e4a36]" />
             <h2 className="text-sm font-bold text-[#1f241d] font-serif-species">
-              Life List Data Management
+              Backup & Export Data
             </h2>
           </div>
-          <button onClick={onClose} className="text-[#828d7e] hover:text-[#1f241d] p-1 rounded">
+          <button onClick={onClose} className="text-[#828d7e] hover:text-[#1f241d] p-1 rounded cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -128,9 +128,9 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
 
           {/* Export Section */}
           <div className="bg-[#faf9f6] p-3 rounded border border-[#e6dfd3] space-y-2">
-            <div className="font-semibold text-[#1f241d]">Export Your Life List</div>
+            <div className="font-semibold text-[#1f241d]">Export Records</div>
             <p className="text-[#6b7568] text-[11px]">
-              Download your complete field records with Catalogue of Life taxonomic hierarchies.
+              Download your complete field records and taxonomic data.
             </p>
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button

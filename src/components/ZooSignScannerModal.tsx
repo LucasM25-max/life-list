@@ -369,19 +369,13 @@ export function ZooSignScannerModal({
         {/* Header */}
         <div className="bg-[#2e4a36] text-[#f4efe6] px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <div className="p-1 bg-amber-500/20 rounded border border-amber-400/40 text-amber-300">
+            <div className="p-1.5 bg-white/10 rounded-lg text-white">
               <Camera className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold font-serif-species tracking-wide text-white flex items-center gap-1.5">
-                <span>Zoo Sign Optical Scanner</span>
-                <span className="text-[10px] bg-[#3d6046] text-[#eef3ed] px-1.5 py-0.5 rounded font-mono">
-                  Gemini Vision
-                </span>
+              <h2 className="text-sm font-bold font-serif-species tracking-wide text-white">
+                Scan Sign
               </h2>
-              <p className="text-[10px] text-[#c2d1bf]">
-                Point camera at exhibit plaque to scan multi-species signs & log seen status
-              </p>
             </div>
           </div>
           
@@ -393,7 +387,7 @@ export function ZooSignScannerModal({
             )}
             <button
               onClick={onClose}
-              className="text-[#c2d1bf] hover:text-white p-1 rounded-md transition-colors"
+              className="text-[#c2d1bf] hover:text-white p-1 rounded-md transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -422,19 +416,28 @@ export function ZooSignScannerModal({
 
         {/* Step 1: Camera Live Capture / Upload */}
         {step === 'capture' && (
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center min-h-[380px] bg-[#1a2119] text-white">
+          <div className="flex-1 flex flex-col min-h-0 bg-black text-white relative overflow-hidden">
             
             {/* Live Camera Viewfinder or Error State */}
-            <div className="relative w-full max-w-lg aspect-4/3 bg-black rounded-lg overflow-hidden border border-[#3d4f3b] flex items-center justify-center">
+            <div className="relative flex-1 min-h-[360px] sm:min-h-[460px] bg-black flex items-center justify-center overflow-hidden">
               {cameraError ? (
-                <div className="p-6 text-center text-xs text-[#a6b5a2] space-y-3">
-                  <Camera className="w-10 h-10 mx-auto text-[#6b7c67] opacity-60" />
-                  <p>{cameraError}</p>
+                <div className="p-6 text-center text-xs text-white space-y-4 max-w-sm">
+                  <div className="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/30">
+                    <AlertCircle className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-sm text-white font-serif-species">
+                      Sign Camera Unavailable
+                    </p>
+                    <p className="text-[11px] text-white/70">
+                      {cameraError}
+                    </p>
+                  </div>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#2e4a36] text-white rounded-md text-xs font-semibold hover:bg-[#3d6046] transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2e4a36] text-white rounded-xl text-xs font-bold shadow-md hover:bg-[#3d5e45] cursor-pointer"
                   >
-                    <Upload className="w-3.5 h-3.5" />
+                    <Upload className="w-4 h-4" />
                     <span>Upload Sign Image</span>
                   </button>
                 </div>
@@ -449,14 +452,21 @@ export function ZooSignScannerModal({
                   />
                   
                   {/* Framing Overlay for Sign Plaque */}
-                  <div className="absolute inset-4 border-2 border-dashed border-amber-400/70 rounded-lg pointer-events-none flex flex-col justify-between p-3">
-                    <div className="flex justify-between items-center text-[10px] text-amber-200 bg-black/60 px-2 py-1 rounded backdrop-blur-xs w-fit">
-                      <span>Center zoo plaque / species board inside box</span>
+                  <div className="absolute inset-6 sm:inset-10 border border-amber-400/30 rounded-2xl pointer-events-none flex items-center justify-center">
+                    <div className="w-10 h-10 sm:w-14 sm:h-14 border-t-3 border-l-3 border-amber-400 absolute -top-1 -left-1 rounded-tl-xl shadow-lg" />
+                    <div className="w-10 h-10 sm:w-14 sm:h-14 border-t-3 border-r-3 border-amber-400 absolute -top-1 -right-1 rounded-tr-xl shadow-lg" />
+                    <div className="w-10 h-10 sm:w-14 sm:h-14 border-b-3 border-l-3 border-amber-400 absolute -bottom-1 -left-1 rounded-bl-xl shadow-lg" />
+                    <div className="w-10 h-10 sm:w-14 sm:h-14 border-b-3 border-r-3 border-amber-400 absolute -bottom-1 -right-1 rounded-br-xl shadow-lg" />
+
+                    <div className="text-[10px] text-amber-300 font-mono-tag tracking-wider bg-black/60 px-3 py-1 rounded-full border border-amber-400/30 shadow-md">
+                      Align sign or plaque inside frame
                     </div>
-                    <div className="flex justify-between text-[10px] text-white/70">
-                      <span>Supports multi-species signs</span>
-                      {coordinates && <span>📍 GPS Ready</span>}
-                    </div>
+                  </div>
+
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/65 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/15 pointer-events-none text-center">
+                    <span className="text-[11px] text-white/90 font-medium">
+                      Ensure species text is legible and in focus
+                    </span>
                   </div>
                 </>
               )}
@@ -472,60 +482,61 @@ export function ZooSignScannerModal({
               onChange={handleFileUpload}
             />
 
-            {/* Capture & Switch Controls */}
-            <div className="mt-4 w-full max-w-lg flex items-center justify-between gap-3 px-2">
+            {/* Capture & Switch Controls Tray */}
+            <div className="p-4 sm:p-5 bg-[#17241b] border-t border-[#2d4232] flex items-center justify-between gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#2a3828] hover:bg-[#3a4d37] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
-                title="Upload image from device"
+                className="px-3.5 py-2.5 text-xs font-semibold text-[#c2d6c6] hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+                title="Upload an image file"
               >
-                <Upload className="w-4 h-4 text-[#a7baa4]" />
+                <Upload className="w-4 h-4 text-amber-400" />
                 <span className="hidden sm:inline">Upload Image</span>
+                <span className="sm:hidden">Upload</span>
               </button>
 
               {!cameraError && (
-                <button
-                  type="button"
-                  onClick={handleSnapPhoto}
-                  className="flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-bold rounded-full shadow-lg text-sm transition-all cursor-pointer"
-                >
-                  <Camera className="w-5 h-5 text-slate-950" />
-                  <span>Snap Sign Photo</span>
-                </button>
+                <div className="flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={handleSnapPhoto}
+                    className="w-16 h-16 sm:w-18 sm:h-18 rounded-full border-4 border-amber-400/50 bg-amber-400/20 hover:bg-amber-400/30 active:scale-90 transition-all flex items-center justify-center shadow-xl cursor-pointer"
+                    title="Snap & Scan Sign"
+                  >
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-amber-400 hover:bg-amber-300 flex items-center justify-center shadow-md">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-slate-900 bg-slate-900 flex items-center justify-center text-amber-400">
+                        <Camera className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </button>
+                </div>
               )}
 
-              {!cameraError && (
-                <button
-                  type="button"
-                  onClick={toggleFacingMode}
-                  className="p-2 bg-[#2a3828] hover:bg-[#3a4d37] text-white rounded-lg text-xs transition-colors cursor-pointer"
-                  title="Flip camera"
-                >
-                  <RefreshCw className="w-4 h-4 text-[#a7baa4]" />
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={toggleFacingMode}
+                className="px-3.5 py-2.5 text-xs font-semibold text-[#c2d6c6] hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+                title="Flip Camera"
+              >
+                <RefreshCw className="w-4 h-4 text-amber-400" />
+                <span className="hidden sm:inline">Flip</span>
+              </button>
             </div>
-
-            <p className="text-[11px] text-[#8e9e8b] mt-3 text-center">
-              Works on single species signs, multi-species aviaries, reptile houses, and safari exhibits.
-            </p>
           </div>
         )}
 
         {/* Step 2: Processing AI State */}
         {step === 'processing' && (
-          <div className="flex-1 p-8 flex flex-col items-center justify-center text-center space-y-4 bg-[#faf7f2]">
+          <div className="flex-1 p-8 flex flex-col items-center justify-center text-center space-y-3 bg-[#faf7f2]">
             <div className="relative">
-              <div className="w-16 h-16 rounded-full border-4 border-[#2e4a36]/20 border-t-[#2e4a36] animate-spin" />
-              <Sparkles className="w-7 h-7 text-amber-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+              <div className="w-12 h-12 rounded-full border-3 border-[#2e4a36]/20 border-t-[#2e4a36] animate-spin" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#1f241d] font-serif-species">
-                Reading Zoo Sign Plaque...
+              <h3 className="text-sm font-bold text-[#1f241d] font-serif-species">
+                Scanning Sign...
               </h3>
-              <p className="text-xs text-[#576054] max-w-sm mt-1">
-                Gemini Vision is extracting species binomials, vernacular names, and IUCN statuses from the sign.
+              <p className="text-xs text-[#6b7568] max-w-sm mt-0.5">
+                Extracting species details from image.
               </p>
             </div>
           </div>
@@ -533,14 +544,14 @@ export function ZooSignScannerModal({
 
         {/* Step 3: Review, Tick Seen Status & Edit Details */}
         {step === 'review' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#faf7f2] text-xs">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#faf7f2] text-xs">
             
             {/* Top Bar: Venue, Enclosure & Location */}
-            <div className="bg-white border border-[#e2dacd] rounded-lg p-3 shadow-xs space-y-2.5">
+            <div className="bg-white border border-[#e2dacd] rounded-lg p-3 shadow-xs space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-[#2e4a36] flex items-center gap-1.5 font-serif-species text-sm">
-                  <Layers className="w-4 h-4 text-[#2e4a36]" />
-                  Exhibit & Location Details
+                <span className="font-bold text-[#2e4a36] flex items-center gap-1.5 font-serif-species text-xs">
+                  <Layers className="w-3.5 h-3.5 text-[#2e4a36]" />
+                  Location & Exhibit
                 </span>
                 {coordinates && (
                   <span className="text-[10px] font-mono bg-[#eef3ed] text-[#2e4a36] px-2 py-0.5 rounded border border-[#cfddce] flex items-center gap-1">
@@ -552,20 +563,20 @@ export function ZooSignScannerModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#576054] mb-0.5">
-                    Location / Zoo Venue
+                  <label className="block text-[10px] font-mono-tag uppercase text-[#576054] mb-0.5">
+                    Location
                   </label>
                   <input
                     type="text"
                     value={venueName}
                     onChange={e => setVenueName(e.target.value)}
                     className="w-full bg-[#fdfbf7] border border-[#d8d0c4] rounded px-2.5 py-1.5 text-xs text-[#1f241d] focus:outline-none focus:ring-1 focus:ring-[#2e4a36]"
-                    placeholder="e.g. Singapore Zoo"
+                    placeholder="e.g. San Diego Zoo Safari Park"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#576054] mb-0.5">
-                    Enclosure / Exhibit Name
+                  <label className="block text-[10px] font-mono-tag uppercase text-[#576054] mb-0.5">
+                    Exhibit / Area
                   </label>
                   <input
                     type="text"
@@ -581,11 +592,8 @@ export function ZooSignScannerModal({
             {/* Species Checklist Header */}
             <div className="flex items-center justify-between pt-1">
               <div>
-                <h4 className="font-bold text-sm text-[#1f241d] font-serif-species flex items-center gap-1.5">
-                  <span>Species on Sign ({scannedSpecies.length})</span>
-                  <span className="text-[11px] font-sans font-normal text-[#6b7568]">
-                    — Tick whether each species was seen
-                  </span>
+                <h4 className="font-bold text-xs text-[#1f241d] font-serif-species">
+                  Species on Sign ({scannedSpecies.length})
                 </h4>
               </div>
               <div className="flex items-center gap-2">
@@ -594,7 +602,7 @@ export function ZooSignScannerModal({
                   onClick={() => handleSelectAll(true)}
                   className="text-[11px] font-medium text-[#2e4a36] hover:underline cursor-pointer"
                 >
-                  Tick All Seen
+                  Tick All
                 </button>
                 <span className="text-[#c2d1bf]">|</span>
                 <button
@@ -612,16 +620,16 @@ export function ZooSignScannerModal({
               {scannedSpecies.map((sp, idx) => (
                 <div
                   key={sp.id || idx}
-                  className={`p-3 rounded-lg border transition-all ${
+                  className={`p-2.5 rounded-lg border transition-all ${
                     sp.isSeen 
                       ? 'bg-white border-[#2e4a36]/40 shadow-xs' 
                       : 'bg-[#f4efe6]/60 border-[#ded5c8] opacity-80'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-2.5">
                     
                     {/* Checkbox & Name */}
-                    <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
                       <button
                         type="button"
                         onClick={() => handleToggleSeen(sp.id)}
@@ -650,16 +658,9 @@ export function ZooSignScannerModal({
                           )}
                         </div>
 
-                        {sp.alternateNames && sp.alternateNames.length > 0 && (
-                          <div className="text-[10px] text-[#6b7568] mt-0.5">
-                            Also: {sp.alternateNames.join(', ')}
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2 mt-1 text-[10px] text-[#788574]">
-                          {sp.taxonomy?.class && <span>Class: {sp.taxonomy.class}</span>}
-                          {sp.taxonomy?.order && <span>• Order: {sp.taxonomy.order}</span>}
-                          {sp.taxonomy?.family && <span>• Family: {sp.taxonomy.family}</span>}
+                        <div className="flex items-center gap-2 mt-0.5 text-[10px] text-[#788574]">
+                          {sp.taxonomy?.class && <span>{sp.taxonomy.class}</span>}
+                          {sp.taxonomy?.family && <span>• {sp.taxonomy.family}</span>}
                         </div>
                       </div>
                     </div>
@@ -669,17 +670,17 @@ export function ZooSignScannerModal({
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
                         sp.isSeen 
                           ? 'bg-[#eef3ed] text-[#2e4a36] border border-[#cfddce]' 
-                          : 'bg-amber-50 text-amber-800 border border-amber-200'
+                          : 'bg-stone-100 text-stone-600 border border-stone-200'
                       }`}>
-                        {sp.isSeen ? <Eye className="w-3 h-3 text-[#2e4a36]" /> : <EyeOff className="w-3 h-3 text-amber-700" />}
-                        <span>{sp.isSeen ? 'Seen (Life List)' : 'Held in Exhibit · Not Seen'}</span>
+                        {sp.isSeen ? <Eye className="w-3 h-3 text-[#2e4a36]" /> : <EyeOff className="w-3 h-3 text-stone-500" />}
+                        <span>{sp.isSeen ? 'Seen' : 'Not Seen'}</span>
                       </span>
 
                       <button
                         type="button"
                         onClick={() => handleRemoveSpecies(sp.id)}
-                        className="text-[#9ea89b] hover:text-red-700 p-1 rounded"
-                        title="Remove from list"
+                        className="text-[#9ea89b] hover:text-red-700 p-1 rounded cursor-pointer"
+                        title="Remove"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -697,11 +698,11 @@ export function ZooSignScannerModal({
                 className="w-full py-2 border border-dashed border-[#b8ae9f] hover:border-[#2e4a36] text-[#576054] hover:text-[#2e4a36] rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer bg-white"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Another Species to this Sign</span>
+                <span>Add Species</span>
               </button>
             ) : (
               <div className="bg-white border border-[#2e4a36]/30 p-3 rounded-lg space-y-2">
-                <div className="font-bold text-[#2e4a36] text-xs">Add Extra Species</div>
+                <div className="font-bold text-[#2e4a36] text-xs">Add Species</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input
                     type="text"
@@ -722,7 +723,7 @@ export function ZooSignScannerModal({
                   <button
                     type="button"
                     onClick={() => setIsAddingCustom(false)}
-                    className="px-2 py-1 text-xs text-[#576054]"
+                    className="px-2 py-1 text-xs text-[#576054] cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -731,19 +732,11 @@ export function ZooSignScannerModal({
                     onClick={handleAddManualSpecies}
                     className="px-3 py-1 bg-[#2e4a36] text-white rounded text-xs font-medium cursor-pointer"
                   >
-                    Add Species
+                    Add
                   </button>
                 </div>
               </div>
             )}
-
-            {/* Explanation Note */}
-            <div className="bg-[#eef3ed] border border-[#cfddce] rounded-lg p-2.5 text-[11px] text-[#2e4a36] flex items-start gap-2">
-              <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#2e4a36]" />
-              <div>
-                <strong>How this works:</strong> Species ticked as <strong>Seen</strong> are added to your main Life List. Species left unticked are preserved in this enclosure's inventory at <strong>{venueName}</strong>, so you can track all species held at the zoo and see what you missed!
-              </div>
-            </div>
           </div>
         )}
 
@@ -756,14 +749,14 @@ export function ZooSignScannerModal({
                 onClick={() => setStep('capture')}
                 className="px-3 py-1.5 border border-[#c5bcad] text-[#576054] hover:bg-white rounded-md text-xs font-medium transition-colors cursor-pointer"
               >
-                Retake Photo
+                Retake
               </button>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-3 py-1.5 text-[#576054] hover:text-[#1f241d] text-xs font-medium"
+                  className="px-3 py-1.5 text-[#576054] hover:text-[#1f241d] text-xs font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -774,7 +767,7 @@ export function ZooSignScannerModal({
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>
-                    Save Enclosure & Log {scannedSpecies.filter(s => s.isSeen).length} Seen
+                    Save ({scannedSpecies.filter(s => s.isSeen).length} seen)
                   </span>
                 </button>
               </div>
@@ -784,7 +777,7 @@ export function ZooSignScannerModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3 py-1.5 text-[#576054] hover:text-[#1f241d] text-xs font-medium ml-auto"
+                className="px-3 py-1.5 text-[#576054] hover:text-[#1f241d] text-xs font-medium ml-auto cursor-pointer"
               >
                 Close
               </button>
