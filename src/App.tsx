@@ -515,6 +515,12 @@ export default function App() {
                 <div className="md:hidden">
                   <MobileSightingsFeed
                     observations={filteredObservations}
+                    activeTrip={activeTrip}
+                    onOpenStartTrip={() => {
+                      setStartTripDefaultVenue(filter.venue || recentVenues[0] || '');
+                      setIsStartTripOpen(true);
+                    }}
+                    onOpenEndTrip={() => setIsEndTripOpen(true)}
                     onSelectObservation={setSelectedObservation}
                     onEditObservation={handleEditObservation}
                     onDeleteObservation={handleDeleteObservation}
@@ -588,6 +594,12 @@ export default function App() {
         filter={filter}
         setFilter={setFilter}
         observations={observations}
+        activeTrip={activeTrip}
+        onOpenStartTrip={() => {
+          setStartTripDefaultVenue(filter.venue || recentVenues[0] || '');
+          setIsStartTripOpen(true);
+        }}
+        onOpenEndTrip={() => setIsEndTripOpen(true)}
         onOpenLogModal={() => handleOpenLogModal('scan')}
         onOpenExportImport={() => setIsExportImportOpen(true)}
       />

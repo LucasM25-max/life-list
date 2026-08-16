@@ -139,22 +139,22 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenEndTrip}
               title={`Active Field Trip at ${activeTrip.venueName}. Click to review or finish.`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-xs transition-all cursor-pointer animate-pulse-subtle border border-emerald-500"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-xs transition-all cursor-pointer border border-emerald-500 shrink-0"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
               <Navigation className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Trip:</span>
-              <span className="max-w-[100px] truncate">{activeTrip.venueName}</span>
+              <span className="hidden xs:inline">Visit:</span>
+              <span className="max-w-[70px] sm:max-w-[110px] truncate">{activeTrip.venueName}</span>
             </button>
           ) : (
             onOpenStartTrip && (
               <button
                 onClick={onOpenStartTrip}
                 title="Start a new Field Trip at a zoo or nature reserve"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#2e4a36] bg-[#eef3ed] hover:bg-[#dbe7dc] border border-[#cfddce] rounded-xl transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-[#2e4a36] bg-[#eef3ed] hover:bg-[#dbe7dc] border border-[#cfddce] rounded-xl transition-colors cursor-pointer shrink-0"
               >
                 <Navigation className="w-3.5 h-3.5 text-[#2e4a36]" />
-                <span>Start Trip</span>
+                <span className="text-[11px] sm:text-xs font-medium">Start Visit</span>
               </button>
             )
           )}
