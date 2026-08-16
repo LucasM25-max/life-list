@@ -28,10 +28,10 @@ app.post("/api/species-summary", async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash-lite", // or gemini-3.1-flash-lite
-      contents: `Provide a short, fascinating overview (about 2-3 paragraphs) of the species "${vernacularName}" (${scientificName}). Focus on cool and interesting facts unique to the species, such as its behavior, diet, unique adaptations, or conservation story. Keep it engaging and easy to read. Return ONLY the text, no markdown formatting like bolding or headers unless necessary.`,
+      model: "gemini-2.5-flash",
+      contents: `Provide exactly 5 bullet points of the top 5 most interesting facts about the species "${vernacularName}" (${scientificName}). Focus on cool and interesting facts unique to the species. Use a dash (-) for each bullet point. Do not include any other introductory or concluding text.`,
       config: {
-        systemInstruction: "You are an expert wildlife communicator creating fun, engaging dossiers for a nature app.",
+        systemInstruction: "You are an expert wildlife communicator creating fun, engaging dossiers for a nature app. Output only the requested bullet points.",
       }
     });
 

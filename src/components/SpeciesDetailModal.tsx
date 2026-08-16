@@ -174,9 +174,11 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
                   Generating fascinating facts...
                 </div>
               ) : summary ? (
-                summary.split('\n').filter(p => p.trim() !== '').map((p, i) => (
-                  <p key={i}>{p}</p>
-                ))
+                <ul className="list-disc pl-4 space-y-1.5">
+                  {summary.split('\n').filter(p => p.trim() !== '').map((p, i) => (
+                    <li key={i}>{p.replace(/^[-*]\s*/, '')}</li>
+                  ))}
+                </ul>
               ) : (
                 <p className="italic text-[#828d7e]">Overview unavailable.</p>
               )}
