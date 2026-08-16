@@ -35,6 +35,8 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
+  const [wikiImages, setWikiImages] = useState<{url: string, title: string, isMain: boolean}[]>([]);
+  const [loadingImages, setLoadingImages] = useState<boolean>(false);
 
   // Match taxon details from curated data if available
   const taxonInfo = curatedTaxa.find(
@@ -72,8 +74,25 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
         if (isMounted) setLoadingSummary(false);
       }
     };
+
+    const fetchImages = async () => {
+      setLoadingImages(true);
+      setWikiImages([]);
+      try {
+        const res = await fetch(`/api/species-images?q=${encodeURIComponent(scientificName)}`);
+        const data = await res.json();
+        if (isMounted && data.images) {
+          setWikiImages(data.images);
+        }
+      } catch (error) {
+        console.error("Failed to fetch images", error);
+      } finally {
+        if (isMounted) setLoadingImages(false);
+      }
+    };
     
     fetchSummary();
+    fetchImages();
     
     return () => { isMounted = false; };
   }, [scientificName, commonName]);
@@ -99,29 +118,76 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
 
   const liferObs = speciesObs.find(o => o.isLifer) || speciesObs[speciesObs.length - 1];
 
+  const mainWikiImage = wikiImages.find(i => i.isMain) || wikiImages[0];
+  const galleryWikiImages = wikiImages.filter(i => i !== mainWikiImage);
+
   return (
     <div className="flex flex-col bg-white overflow-hidden animate-in fade-in duration-150 sm:rounded-2xl border border-[#e6dfd3] shadow-sm w-full mx-auto max-w-3xl flex-1 mb-6">
-      <div className="flex flex-col w-full h-full">
-        {/* Header */}
-        <div className="bg-[#f9f8f5] border-b border-[#e6dfd3] p-4 flex items-start justify-between shrink-0">
-          <div className="flex items-start gap-3">
-            {heroPhoto && (
-              <img
-                src={heroPhoto}
-                alt={commonName}
-                onClick={() => setSelectedPhoto(heroPhoto)}
-                className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover border border-[#2e4a36] shadow-xs cursor-pointer shrink-0 hover:opacity-90 transition-opacity"
-                title="Click to expand species photo"
-              />
-            )}
+      <div className="flex flex-col w-full h-full relative">
+        {/* Close Button overlay */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-20 bg-black/40 text-white hover:bg-black/60 p-2 rounded-full backdrop-blur-md transition-colors cursor-pointer shrink-0"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Big Hero Image */}
+        {(mainWikiImage || heroPhoto) && (
+          <div 
+            className="w-full h-64 sm:h-80 bg-[#1f241d] relative cursor-pointer group shrink-0"
+            onClick={() => setSelectedPhoto(mainWikiImage?.url || heroPhoto!)}
+          >
+            <img
+              src={mainWikiImage?.url || heroPhoto!}
+              alt={commonName}
+              className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+            <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between z-10">
+              <div>
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  {taxonInfo?.iucnCategory && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                      taxonInfo.iucnCategory === 'CR' ? 'bg-red-500 text-white' :
+                      taxonInfo.iucnCategory === 'EN' ? 'bg-orange-500 text-white' :
+                      taxonInfo.iucnCategory === 'VU' ? 'bg-amber-500 text-white' :
+                      'bg-green-600 text-white'
+                    }`}>
+                      IUCN: {taxonInfo.iucnCategory}
+                    </span>
+                  )}
+                  {(obsWithPhotos.length > 0 || wikiImages.length > 0) && (
+                    <span className="text-[10px] font-mono-tag bg-black/40 text-white backdrop-blur-md px-1.5 py-0.5 rounded border border-white/20 flex items-center gap-1">
+                      <Camera className="w-3 h-3" />
+                      <span>{obsWithPhotos.length + wikiImages.length} Photo{(obsWithPhotos.length + wikiImages.length) > 1 ? 's' : ''}</span>
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight drop-shadow-md">
+                  {commonName}
+                </h2>
+                <div className="flex items-center gap-2 mt-1 drop-shadow-md">
+                  <span className="font-serif-species italic text-base text-white/90">
+                    {scientificName}
+                  </span>
+                  {authorship && (
+                    <span className="text-xs text-white/60">
+                      {authorship}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <Maximize2 className="w-5 h-5 text-white/70 group-hover:text-white transition-colors" />
+            </div>
+          </div>
+        )}
+
+        {/* Header if no Hero Image */}
+        {!(mainWikiImage || heroPhoto) && (
+          <div className="bg-[#f9f8f5] border-b border-[#e6dfd3] p-4 pt-12 flex items-start justify-between shrink-0">
             <div>
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                {obsWithPhotos.length > 0 && (
-                  <span className="text-[10px] font-mono-tag bg-[#eef3ed] text-[#2e4a36] px-1.5 py-0.2 rounded border border-[#cfddce] flex items-center gap-1">
-                    <Camera className="w-3 h-3" />
-                    <span>{obsWithPhotos.length} Photo{obsWithPhotos.length > 1 ? 's' : ''}</span>
-                  </span>
-                )}
                 {taxonInfo?.iucnCategory && (
                   <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
                     taxonInfo.iucnCategory === 'CR' ? 'bg-red-100 text-red-800' :
@@ -133,7 +199,6 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
                   </span>
                 )}
               </div>
-
               <h2 className="text-xl font-bold text-[#1f241d] leading-tight">
                 {commonName}
               </h2>
@@ -149,14 +214,7 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
               </div>
             </div>
           </div>
-
-          <button
-            onClick={onClose}
-            className="text-[#828d7e] hover:text-[#1f241d] p-1 rounded-md hover:bg-[#eee9e0] transition-colors cursor-pointer shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        )}
 
         <div className="p-4 overflow-y-auto flex-1 space-y-4 text-xs">
           {/* AI Species Overview */}
@@ -185,14 +243,15 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Photo Gallery If Multiple Observations have Photos */}
-          {obsWithPhotos.length > 0 && (
+          {/* Photo Gallery If Multiple Observations have Photos or Wiki Gallery */}
+          {(obsWithPhotos.length > 0 || galleryWikiImages.length > 0) && (
             <div className="bg-[#faf9f6] border border-[#e6dfd3] rounded-md p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-mono-tag uppercase font-semibold text-[#6b7568] flex items-center gap-1.5">
                   <Camera className="w-3.5 h-3.5 text-[#2e4a36]" />
-                  <span>Field Photo Gallery ({obsWithPhotos.length})</span>
+                  <span>Photo Gallery ({obsWithPhotos.length + galleryWikiImages.length})</span>
                 </span>
+                {loadingImages && <Loader2 className="w-3 h-3 animate-spin text-[#828d7e]" />}
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {obsWithPhotos.map((obs) => (
@@ -209,6 +268,24 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-1.5 text-white">
                       <div className="text-[10px] font-bold truncate">{obs.venueName}</div>
                       <div className="text-[9px] text-white/80">{obs.date}</div>
+                    </div>
+                  </div>
+                ))}
+                
+                {galleryWikiImages.map((img, i) => (
+                  <div
+                    key={`wiki-${i}`}
+                    onClick={() => setSelectedPhoto(img.url)}
+                    className="relative group rounded-md overflow-hidden border border-[#d8d0c4] aspect-square cursor-pointer bg-black"
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.title}
+                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-1.5 text-white">
+                      <div className="text-[10px] font-bold truncate">Web Archive</div>
+                      <div className="text-[9px] text-white/80 truncate">Wikimedia</div>
                     </div>
                   </div>
                 ))}

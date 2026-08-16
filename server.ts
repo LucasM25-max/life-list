@@ -291,6 +291,81 @@ app.get("/api/taxonomy/details/:id", async (req, res) => {
   res.status(404).json({ error: "Taxon not found" });
 });
 
+// Endpoint to fetch images of a species from Wikipedia/Wikimedia
+app.get("/api/species-images", async (req, res) => {
+  const query = (req.query.q as string || "").trim();
+  if (!query) {
+    return res.json({ images: [] });
+  }
+
+  try {
+    // 1. Fetch main page image and gallery from English Wikipedia API
+    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages|images&titles=${encodeURIComponent(query)}&format=json&pithumbsize=1000&imlimit=10`;
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    
+    const wikiRes = await fetch(wikiUrl, {
+      signal: controller.signal,
+      headers: { "Accept": "application/json", "User-Agent": "LifeListApp/1.0" }
+    });
+    
+    if (!wikiRes.ok) throw new Error("Wikipedia API error");
+    
+    const wikiData = await wikiRes.json();
+    clearTimeout(timeout);
+
+    const pages = wikiData.query?.pages || {};
+    const pageId = Object.keys(pages)[0];
+    const page = pages[pageId];
+
+    const images: { url: string, title: string, isMain: boolean }[] = [];
+
+    if (page && pageId !== "-1") {
+      // Main image
+      if (page.thumbnail && page.thumbnail.source) {
+        images.push({ url: page.thumbnail.source, title: query, isMain: true });
+      }
+
+      // We could resolve the other images via another API call to get their URLs,
+      // but to save time/latency, we will fetch directly from Wikimedia Commons API
+      // if we need more images. Let's do a direct Commons search for a gallery.
+    }
+
+    // 2. Fetch gallery from Wikimedia Commons
+    const commonsUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query + ' filetype:bitmap')}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|extmetadata&format=json&iiurlwidth=800`;
+    
+    const commonsRes = await fetch(commonsUrl, {
+      headers: { "Accept": "application/json", "User-Agent": "LifeListApp/1.0" }
+    });
+
+    if (commonsRes.ok) {
+      const commonsData = await commonsRes.json();
+      const commonsPages = commonsData.query?.pages || {};
+      
+      for (const key in commonsPages) {
+        const cp = commonsPages[key];
+        if (cp.imageinfo && cp.imageinfo.length > 0) {
+          const info = cp.imageinfo[0];
+          // avoid maps/svgs
+          if (info.thumburl && !info.thumburl.toLowerCase().endsWith('.svg.png')) {
+             // check if it's already the main image
+             if (!images.some(img => info.thumburl.includes(img.url.split('/').pop() || 'XYZ'))) {
+                images.push({ url: info.thumburl, title: cp.title.replace('File:', ''), isMain: images.length === 0 });
+             }
+          }
+        }
+      }
+    }
+
+    res.json({ images });
+
+  } catch (err) {
+    console.error("Species images error:", err);
+    res.json({ images: [] });
+  }
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

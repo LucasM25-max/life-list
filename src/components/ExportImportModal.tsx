@@ -22,6 +22,7 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
 }) => {
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
   if (!isOpen) return null;
 
@@ -85,8 +86,6 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
     };
     reader.readAsText(file);
   };
-
-  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
   const handleClearAll = () => {
     if (!isConfirmingClear) {
