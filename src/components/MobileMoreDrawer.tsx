@@ -1,12 +1,14 @@
 import React from 'react';
 import { LifeListFilter, Observation } from '../types';
+import { signOut } from '../utils/firebase';
 import { 
   X, 
   Download, 
   Trophy, 
   SlidersHorizontal, 
   RotateCcw, 
-  Plus
+  Plus,
+  LogOut
 } from 'lucide-react';
 
 interface MobileMoreDrawerProps {
@@ -17,8 +19,6 @@ interface MobileMoreDrawerProps {
   observations: Observation[];
   onOpenLogModal: () => void;
   onOpenExportImport: () => void;
-  onToggleMilestones: () => void;
-  showMilestones: boolean;
 }
 
 export const MobileMoreDrawer: React.FC<MobileMoreDrawerProps> = ({
@@ -28,9 +28,7 @@ export const MobileMoreDrawer: React.FC<MobileMoreDrawerProps> = ({
   setFilter,
   observations,
   onOpenLogModal,
-  onOpenExportImport,
-  onToggleMilestones,
-  showMilestones
+  onOpenExportImport
 }) => {
   if (!isOpen) return null;
 
@@ -197,21 +195,8 @@ export const MobileMoreDrawer: React.FC<MobileMoreDrawerProps> = ({
             </div>
           </div>
 
-          {/* Utilities & Milestones */}
+          {/* Utilities */}
           <div className="pt-2 border-t border-[#f0eae0] space-y-2">
-            <button
-              onClick={() => {
-                onToggleMilestones();
-                onClose();
-              }}
-              className="w-full flex items-center justify-between p-2.5 bg-white border border-[#e6dfd3] rounded-lg text-xs font-semibold text-[#1f241d] hover:bg-[#faf9f6] cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-[#99582a]" />
-                <span>{showMilestones ? 'Hide Milestones' : 'Milestones'}</span>
-              </div>
-            </button>
-
             <button
               onClick={() => {
                 onClose();
@@ -222,6 +207,19 @@ export const MobileMoreDrawer: React.FC<MobileMoreDrawerProps> = ({
               <div className="flex items-center gap-2">
                 <Download className="w-4 h-4 text-[#2e4a36]" />
                 <span>Data Backup & Export</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                signOut();
+              }}
+              className="w-full flex items-center justify-between p-2.5 bg-white border border-[#e6dfd3] rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
               </div>
             </button>
           </div>

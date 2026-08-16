@@ -19,6 +19,29 @@ const ai = new GoogleGenAI({
   }
 });
 
+// Endpoint to get a quick fun summary of a species
+app.post("/api/species-summary", async (req, res) => {
+  try {
+    const { vernacularName, scientificName } = req.body;
+    if (!vernacularName || !scientificName) {
+      return res.status(400).json({ error: "Missing species names." });
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash-lite", // or gemini-3.1-flash-lite
+      contents: `Provide a short, fascinating overview (about 2-3 paragraphs) of the species "${vernacularName}" (${scientificName}). Focus on cool and interesting facts unique to the species, such as its behavior, diet, unique adaptations, or conservation story. Keep it engaging and easy to read. Return ONLY the text, no markdown formatting like bolding or headers unless necessary.`,
+      config: {
+        systemInstruction: "You are an expert wildlife communicator creating fun, engaging dossiers for a nature app.",
+      }
+    });
+
+    res.json({ summary: response.text });
+  } catch (error) {
+    console.error("Gemini summary error:", error);
+    res.status(500).json({ error: "Failed to generate species summary." });
+  }
+});
+
 // Endpoint to scan and extract all species from a zoo informational sign plaque
 app.post("/api/scan-sign", async (req, res) => {
   try {

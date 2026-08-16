@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Observation } from '../types';
 import { curatedTaxa } from '../data/curatedTaxa';
 import { 
@@ -14,7 +14,9 @@ import {
   Compass,
   Tag,
   Camera,
-  Maximize2
+  Maximize2,
+  BrainCircuit,
+  Loader2
 } from 'lucide-react';
 
 interface SpeciesDetailModalProps {
@@ -31,21 +33,52 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
   onSelectObservation
 }) => {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-
-  if (!scientificName) return null;
-
-  // Filter observations of this exact species
-  const speciesObs = observations.filter(
-    o => o.scientificName.toLowerCase() === scientificName.toLowerCase()
-  );
+  const [summary, setSummary] = useState<string | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
 
   // Match taxon details from curated data if available
   const taxonInfo = curatedTaxa.find(
-    t => t.scientificName.toLowerCase() === scientificName.toLowerCase()
+    t => t.scientificName.toLowerCase() === scientificName?.toLowerCase()
+  );
+
+  // Filter observations of this exact species
+  const speciesObs = observations.filter(
+    o => o.scientificName.toLowerCase() === scientificName?.toLowerCase()
   );
 
   const repObs = speciesObs[0];
-  const commonName = repObs?.vernacularName || taxonInfo?.vernacularName || scientificName;
+  const commonName = repObs?.vernacularName || taxonInfo?.vernacularName || scientificName || '';
+
+  useEffect(() => {
+    if (!scientificName || !commonName) return;
+    
+    let isMounted = true;
+    const fetchSummary = async () => {
+      setLoadingSummary(true);
+      setSummary(null);
+      try {
+        const res = await fetch("/api/species-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vernacularName: commonName, scientificName: scientificName })
+        });
+        const data = await res.json();
+        if (isMounted && data.summary) {
+          setSummary(data.summary);
+        }
+      } catch (error) {
+        console.error("Failed to fetch summary", error);
+      } finally {
+        if (isMounted) setLoadingSummary(false);
+      }
+    };
+    
+    fetchSummary();
+    
+    return () => { isMounted = false; };
+  }, [scientificName, commonName]);
+
+  if (!scientificName) return null;
   const authorship = repObs?.authorship || taxonInfo?.authorship || '';
   const totalCountSeen = speciesObs.reduce((acc, o) => acc + (o.count || 1), 0);
   const wildCount = speciesObs.filter(o => o.wildStatus === 'wild').length;
@@ -67,10 +100,10 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
   const liferObs = speciesObs.find(o => o.isLifer) || speciesObs[speciesObs.length - 1];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white border border-[#e6dfd3] rounded-lg shadow-xl w-full max-w-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden animate-in fade-in duration-150">
+      <div className="flex flex-col w-full max-w-3xl mx-auto h-[100dvh]">
         {/* Header */}
-        <div className="bg-[#f9f8f5] border-b border-[#e6dfd3] p-4 flex items-start justify-between">
+        <div className="bg-[#f9f8f5] border-b border-[#e6dfd3] p-4 flex items-start justify-between shrink-0">
           <div className="flex items-start gap-3">
             {heroPhoto && (
               <img
@@ -126,6 +159,30 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
         </div>
 
         <div className="p-4 overflow-y-auto flex-1 space-y-4 text-xs">
+          {/* AI Species Overview */}
+          <div className="bg-[#fcfbf9] border border-[#d8d0c4] rounded-md p-3 relative overflow-hidden">
+            <div className="flex items-center gap-1.5 mb-2 relative z-10">
+              <BrainCircuit className="w-4 h-4 text-[#99582a]" />
+              <span className="text-[10px] font-mono-tag uppercase font-semibold text-[#1f241d]">
+                Species Overview
+              </span>
+            </div>
+            <div className="relative z-10 text-[#424d3d] text-[11px] leading-relaxed space-y-2">
+              {loadingSummary ? (
+                <div className="flex items-center gap-2 py-2 text-[#828d7e] italic">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Generating fascinating facts...
+                </div>
+              ) : summary ? (
+                summary.split('\n').filter(p => p.trim() !== '').map((p, i) => (
+                  <p key={i}>{p}</p>
+                ))
+              ) : (
+                <p className="italic text-[#828d7e]">Overview unavailable.</p>
+              )}
+            </div>
+          </div>
+
           {/* Photo Gallery If Multiple Observations have Photos */}
           {obsWithPhotos.length > 0 && (
             <div className="bg-[#faf9f6] border border-[#e6dfd3] rounded-md p-3">

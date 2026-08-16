@@ -189,16 +189,38 @@ export const MilestonesDashboard: React.FC<MilestonesDashboardProps> = ({
             />
           </div>
 
-          <select
-            value={selectedStatus}
-            onChange={e => setSelectedStatus(e.target.value as StatusFilter)}
-            className="bg-[#fdfbf7] border border-[#d8d0c4] rounded-xl px-2.5 py-1 text-xs text-[#1f241d] focus:outline-none cursor-pointer"
-          >
-            <option value="all">All Status</option>
-            <option value="completed">Unlocked</option>
-            <option value="in_progress">In Progress</option>
-            <option value="unstarted">Unstarted</option>
-          </select>
+          <div className="flex items-center bg-[#f4efe6] p-1 rounded-xl border border-[#ded6c9]">
+            <button
+              onClick={() => setSelectedStatus('all')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                selectedStatus === 'all'
+                  ? 'bg-white text-[#1f241d] shadow-2xs'
+                  : 'text-[#6b7568] hover:text-[#1f241d]'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setSelectedStatus('completed')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                selectedStatus === 'completed'
+                  ? 'bg-white text-[#2e4a36] shadow-2xs'
+                  : 'text-[#6b7568] hover:text-[#1f241d]'
+              }`}
+            >
+              Unlocked
+            </button>
+            <button
+              onClick={() => setSelectedStatus('in_progress')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                selectedStatus === 'in_progress'
+                  ? 'bg-white text-[#99582a] shadow-2xs'
+                  : 'text-[#6b7568] hover:text-[#1f241d]'
+              }`}
+            >
+              In Progress
+            </button>
+          </div>
         </div>
       </div>
 

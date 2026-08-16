@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Observation, LifeListFilter, EnclosureRecord, TripRecord, VenueType, WildStatus } from './types';
 import { 
-  loadObservations, 
-  saveObservations, 
-  loadEnclosures, 
-  saveEnclosures, 
-  loadTrips,
-  saveTrips,
-  loadActiveTrip,
-  saveActiveTrip,
   recalculateLifers,
   deduplicateObservations
 } from './utils/storage';
+import { auth, onAuthStateChanged, User } from './utils/firebase';
+import { loadFromFirestore, syncObservationsToFirestore, syncTripsToFirestore, syncEnclosuresToFirestore } from './utils/firebaseSync';
+import { LoginScreen } from './components/LoginScreen';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { ActiveTripBar } from './components/ActiveTripBar';
@@ -32,10 +27,38 @@ import { MobileSightingsFeed } from './components/MobileSightingsFeed';
 import { Trophy } from 'lucide-react';
 
 export default function App() {
-  const [observations, setObservations] = useState<Observation[]>(() => loadObservations());
-  const [enclosures, setEnclosures] = useState<EnclosureRecord[]>(() => loadEnclosures());
-  const [trips, setTrips] = useState<TripRecord[]>(() => loadTrips());
-  const [activeTrip, setActiveTrip] = useState<TripRecord | null>(() => loadActiveTrip());
+  const [user, setUser] = useState<User | null | undefined>(undefined); // undefined means loading
+  const [observations, setObservations] = useState<Observation[]>([]);
+  const [enclosures, setEnclosures] = useState<EnclosureRecord[]>([]);
+  const [trips, setTrips] = useState<TripRecord[]>([]);
+  const [activeTrip, setActiveTrip] = useState<TripRecord | null>(null);
+
+  // Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        // Load data from firestore
+        try {
+          const data = await loadFromFirestore(currentUser.uid);
+          setObservations(data.observations);
+          setTrips(data.trips);
+          setEnclosures(data.enclosures);
+          // Find active trip if any
+          const active = data.trips.find(t => t.status === 'active');
+          setActiveTrip(active || null);
+        } catch (error) {
+          console.error("Failed to load data from Firestore", error);
+        }
+      } else {
+        setObservations([]);
+        setTrips([]);
+        setEnclosures([]);
+        setActiveTrip(null);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   // Trip Modals state
   const [isStartTripOpen, setIsStartTripOpen] = useState(false);
@@ -64,31 +87,32 @@ export default function App() {
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
   const [selectedSpeciesDossier, setSelectedSpeciesDossier] = useState<string | null>(null);
-  const [showMilestones, setShowMilestones] = useState(false);
 
-  // Synchronize observations to localStorage
+  // Synchronize observations to Firestore
   useEffect(() => {
-    saveObservations(observations);
-  }, [observations]);
+    if (user && observations.length > 0) {
+      syncObservationsToFirestore(user.uid, observations).catch(console.error);
+    }
+  }, [observations, user]);
 
-  // Synchronize enclosures to localStorage
+  // Synchronize enclosures to Firestore
   useEffect(() => {
-    saveEnclosures(enclosures);
-  }, [enclosures]);
+    if (user && enclosures.length > 0) {
+      syncEnclosuresToFirestore(user.uid, enclosures).catch(console.error);
+    }
+  }, [enclosures, user]);
 
-  // Synchronize trips to localStorage
+  // Synchronize trips to Firestore
   useEffect(() => {
-    saveTrips(trips);
-  }, [trips]);
+    if (user && trips.length > 0) {
+      syncTripsToFirestore(user.uid, trips).catch(console.error);
+    }
+  }, [trips, user]);
 
-  // Synchronize activeTrip to localStorage
-  useEffect(() => {
-    saveActiveTrip(activeTrip);
-  }, [activeTrip]);
-
-  // Global Keyboard Shortcuts (⌘K for single add, ⌘Q for quick log, ⌘S for scan sign)
+  // Global Keyboard Shortcuts (⌘K for single add, ⌘Q for single quick log, ⌘S for scan sign)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!user) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setEditingObservation(null);
@@ -108,7 +132,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [user]);
 
   // Filter & Sort computation
   const filteredObservations = useMemo(() => {
@@ -433,6 +457,14 @@ export default function App() {
     ...enclosures.map(e => e.venueName.trim())
   ].filter(Boolean)));
 
+  if (user === undefined) {
+    return <div className="min-h-[100dvh] flex items-center justify-center bg-[#fdfbf7]">Loading...</div>;
+  }
+
+  if (!user) {
+    return <LoginScreen />;
+  }
+
   return (
     <div className="min-h-screen bg-[#f9f8f5] flex flex-col selection:bg-[#2e4a36] selection:text-white pb-20 md:pb-8">
       {/* Streamlined Sticky Header */}
@@ -547,24 +579,10 @@ export default function App() {
           />
         )}
 
-        {/* Milestones / Field Achievements Drawer */}
-        <div className="mt-8 pt-4 border-t border-[#e6dfd3]">
-          <div className="flex items-center justify-between mb-3">
-            <button
-              onClick={() => setShowMilestones(!showMilestones)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#576054] hover:text-[#1f241d] transition-colors cursor-pointer"
-            >
-              <Trophy className="w-4 h-4 text-[#99582a]" />
-              <span>{showMilestones ? 'Hide Milestones' : 'Milestones'}</span>
-            </button>
-          </div>
-
-          {showMilestones && (
-            <div className="animate-in fade-in slide-in-from-top-2 duration-150">
-              <MilestonesDashboard observations={observations} />
-            </div>
-          )}
-        </div>
+        {/* Milestones / Field Achievements View */}
+        {filter.viewMode === 'milestones' && (
+          <MilestonesDashboard observations={observations} />
+        )}
       </main>
 
       {/* Streamlined Mobile Bottom Navigation Bar */}
@@ -586,8 +604,6 @@ export default function App() {
         observations={observations}
         onOpenLogModal={() => handleOpenLogModal('scan')}
         onOpenExportImport={() => setIsExportImportOpen(true)}
-        onToggleMilestones={() => setShowMilestones(prev => !prev)}
-        showMilestones={showMilestones}
       />
 
       {/* Start Field Trip Modal */}

@@ -1,0 +1,132 @@
+{
+  "project_id": "knitted-clone-t07pf",
+  "collections": [
+    {
+      "name": "users",
+      "description": "User profiles and settings.",
+      "schema": {
+        "userId": { "type": "string", "description": "The Firebase Auth user ID. Used as the document ID." },
+        "email": { "type": "string", "description": "User email address." },
+        "createdAt": { "type": "timestamp", "description": "Account creation timestamp." }
+      },
+      "rules": [
+        {
+          "allow": ["read", "write"],
+          "condition": "request.auth != null && request.auth.uid == userId",
+          "description": "Users can only read and write their own profile."
+        }
+      ]
+    },
+    {
+      "name": "trips",
+      "description": "Trips recorded by users.",
+      "schema": {
+        "userId": { "type": "string", "description": "The ID of the user who created the trip." },
+        "venueName": { "type": "string" },
+        "venueType": { "type": "string" },
+        "wildStatus": { "type": "string" },
+        "startTime": { "type": "number" },
+        "startDate": { "type": "string" },
+        "endTime": { "type": "number", "optional": true },
+        "endDate": { "type": "string", "optional": true },
+        "status": { "type": "string" },
+        "notes": { "type": "string", "optional": true },
+        "observationIds": { "type": "array", "optional": true },
+        "enclosureIds": { "type": "array", "optional": true },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "rules": [
+        {
+          "allow": ["read", "create", "update", "delete"],
+          "condition": "request.auth != null && request.auth.uid == resource.data.userId",
+          "description": "Users can only access and modify their own trips."
+        },
+        {
+          "allow": ["create"],
+          "condition": "request.auth != null && request.auth.uid == request.resource.data.userId",
+          "description": "Users can create trips with their own userId."
+        }
+      ]
+    },
+    {
+      "name": "enclosures",
+      "description": "Enclosures recorded during trips.",
+      "schema": {
+        "userId": { "type": "string", "description": "The ID of the user who created the enclosure." },
+        "tripId": { "type": "string", "optional": true },
+        "venueName": { "type": "string" },
+        "enclosureName": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "date": { "type": "string" },
+        "time": { "type": "string", "optional": true },
+        "coordinates": { "type": "map", "optional": true },
+        "signPhotoUrl": { "type": "string", "optional": true },
+        "notes": { "type": "string", "optional": true },
+        "speciesList": { "type": "array" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "rules": [
+        {
+          "allow": ["read", "create", "update", "delete"],
+          "condition": "request.auth != null && request.auth.uid == resource.data.userId",
+          "description": "Users can only access and modify their own enclosures."
+        },
+        {
+          "allow": ["create"],
+          "condition": "request.auth != null && request.auth.uid == request.resource.data.userId",
+          "description": "Users can create enclosures with their own userId."
+        }
+      ]
+    },
+    {
+      "name": "observations",
+      "description": "Observations of species recorded by users.",
+      "schema": {
+        "userId": { "type": "string", "description": "The ID of the user who created the observation." },
+        "tripId": { "type": "string", "optional": true },
+        "taxonId": { "type": "string" },
+        "scientificName": { "type": "string" },
+        "vernacularName": { "type": "string" },
+        "authorship": { "type": "string", "optional": true },
+        "taxonomy": { "type": "map" },
+        "date": { "type": "string" },
+        "time": { "type": "string", "optional": true },
+        "venueName": { "type": "string" },
+        "venueType": { "type": "string" },
+        "wildStatus": { "type": "string" },
+        "exhibitOrHabitat": { "type": "string", "optional": true },
+        "enclosureId": { "type": "string", "optional": true },
+        "enclosureName": { "type": "string", "optional": true },
+        "coordinates": { "type": "map", "optional": true },
+        "signPhotoUrl": { "type": "string", "optional": true },
+        "isFromSign": { "type": "boolean", "optional": true },
+        "individualNameOrTag": { "type": "string", "optional": true },
+        "country": { "type": "string", "optional": true },
+        "region": { "type": "string", "optional": true },
+        "notes": { "type": "string", "optional": true },
+        "tags": { "type": "array" },
+        "photoUrl": { "type": "string", "optional": true },
+        "count": { "type": "number" },
+        "sex": { "type": "string" },
+        "lifeStage": { "type": "string" },
+        "isLifer": { "type": "boolean", "optional": true },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "rules": [
+        {
+          "allow": ["read", "create", "update", "delete"],
+          "condition": "request.auth != null && request.auth.uid == resource.data.userId",
+          "description": "Users can only access and modify their own observations."
+        },
+        {
+          "allow": ["create"],
+          "condition": "request.auth != null && request.auth.uid == request.resource.data.userId",
+          "description": "Users can create observations with their own userId."
+        }
+      ]
+    }
+  ]
+}

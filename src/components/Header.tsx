@@ -1,6 +1,7 @@
 import React from 'react';
 import { Observation, LifeListFilter, TripRecord } from '../types';
 import appLogo from '../assets/images/bold_app_logo_1786709233012.jpg';
+import { signOut } from '../utils/firebase';
 import { 
   Plus, 
   Table, 
@@ -8,7 +9,8 @@ import {
   MapPin, 
   Download, 
   Trophy,
-  Navigation
+  Navigation,
+  LogOut
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -180,6 +182,15 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden md:inline-block px-1.5 py-0.2 bg-white/20 text-white text-[9px] rounded-md font-mono-tag">
               ⌘K
             </span>
+          </button>
+
+          {/* Sign Out */}
+          <button
+            onClick={() => signOut()}
+            title="Sign out of your account"
+            className="hidden sm:inline-flex items-center justify-center p-2 text-[#828d7e] hover:text-[#1f241d] hover:bg-[#f4efe6] rounded-xl transition-colors cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>

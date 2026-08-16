@@ -660,11 +660,11 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-3 bg-black/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-[#fcfbf9] sm:border border-[#ded6c9] sm:rounded-xl shadow-2xl w-full max-w-xl h-full sm:h-auto sm:max-h-[94vh] flex flex-col animate-in fade-in zoom-in-95 duration-150 text-xs">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#fcfbf9] overflow-hidden animate-in fade-in duration-150">
+      <div className="flex flex-col w-full max-w-3xl mx-auto h-[100dvh] text-xs">
         
         {/* Header */}
-        <div className="bg-[#1b2b20] text-white px-3 py-2.5 sm:rounded-t-xl flex items-center justify-between shrink-0">
+        <div className="bg-[#1b2b20] text-white px-3 py-2.5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded bg-[#2e4a36] text-[#a9d9b6] flex items-center justify-center font-bold">
               <Zap className="w-3.5 h-3.5 fill-current text-amber-400" />

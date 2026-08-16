@@ -33,6 +33,7 @@ export interface Coordinates {
 
 export interface TripRecord {
   id: string;
+  userId?: string;
   venueName: string;
   venueType: VenueType;
   wildStatus: WildStatus;
@@ -71,6 +72,7 @@ export interface EnclosureSpecies {
 
 export interface EnclosureRecord {
   id: string;
+  userId?: string;
   tripId?: string;
   venueName: string;
   enclosureName: string;
@@ -87,6 +89,7 @@ export interface EnclosureRecord {
 
 export interface Observation {
   id: string;
+  userId?: string;
   tripId?: string;
   taxonId: string;
   scientificName: string;
