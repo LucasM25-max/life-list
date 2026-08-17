@@ -1,9 +1,9 @@
 import { Taxon } from '../types';
 import { curatedTaxa } from '../data/curatedTaxa';
+import { searchOfflineCatalogue } from './offlineCatalogue';
 
 const COL_CACHE_KEY = 'col_offline_species_cache_v1';
 
-// Helper to get cached Catalogue of Life taxa from localStorage
 function getColOfflineCache(): Taxon[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -15,7 +15,6 @@ function getColOfflineCache(): Taxon[] {
   }
 }
 
-// Helper to save new Catalogue of Life taxa to offline localStorage cache
 export function saveToColOfflineCache(taxa: Taxon[]) {
   if (typeof window === 'undefined' || !taxa || taxa.length === 0) return;
   try {
@@ -30,14 +29,13 @@ export function saveToColOfflineCache(taxa: Taxon[]) {
         });
       }
     }
-    const updated = Array.from(map.values()).slice(0, 5000); // Keep up to 5,000 species offline
+    const updated = Array.from(map.values()).slice(0, 5000);
     localStorage.setItem(COL_CACHE_KEY, JSON.stringify(updated));
   } catch (e) {
     console.warn('Failed to update CoL offline cache:', e);
   }
 }
 
-// Enhanced Catalogue of Life offline taxonomy engine
 export function createCustomTaxon(rawQuery: string): Taxon {
   const trimmed = rawQuery.trim();
   if (!trimmed) {
@@ -59,10 +57,7 @@ export function createCustomTaxon(rawQuery: string): Taxon {
   }
 
   const lower = trimmed.toLowerCase();
-
-  const toTitleCase = (str: string) => 
-    str.replace(/\b\w/g, char => char.toUpperCase());
-
+  const toTitleCase = (str: string) => str.replace(/\b\w/g, char => char.toUpperCase());
   const words = trimmed.split(/\s+/);
   const isBinomial = words.length >= 2 && /^[A-Z][a-z]+$/.test(words[0]) && /^[a-z]+$/.test(words[1]);
 
@@ -86,7 +81,6 @@ export function createCustomTaxon(rawQuery: string): Taxon {
   let familyName = '';
   let iconicGroup: Taxon['iconicGroup'] = 'Mammals';
 
-  // Comprehensive biological taxonomy classification rules
   if (/owl|eagle|falcon|hawk|harrier|buzzard|vulture|condor|osprey|kestrel|kite|parrot|macaw|cockatoo|parakeet|lorikeet|lovebird|penguin|duck|goose|swan|teal|mallard|heron|egret|ibis|spoonbill|stork|crane|flamingo|pelican|cormorant|gannet|booby|frigatebird|albatross|petrel|puffin|auk|hummingbird|swift|kingfisher|bee-eater|hornbill|toucan|woodpecker|barbet|crow|raven|jay|magpie|paradise|bowerbird|lyrebird|finch|sparrow|warbler|thrush|robin|blackbird|bluebird|starling|myna|cardinal|tanager|bunting|grosbeak|weaver|waxbill|manakin|cotinga|quetzal|trogon|emu|ostrich|cassowary|rhea|kiwi|pheasant|peacock|peafowl|quail|partridge|grouse|turkey|pigeon|dove|rail|gallinule|coot|jacana|plover|sandpiper|curlew|gull|tern|skua|shoebill|secretarybird|bird/i.test(lower)) {
     className = 'Aves';
     iconicGroup = 'Birds';
@@ -119,15 +113,11 @@ export function createCustomTaxon(rawQuery: string): Taxon {
     if (/frog|toad|tree frog|bullfrog/i.test(lower)) { orderName = 'Anura'; familyName = 'Ranidae'; }
     else if (/salamander|newt|axolotl/i.test(lower)) { orderName = 'Caudata'; familyName = 'Salamandridae'; }
   } else if (/shark|ray|skate|sawfish|guitarfish|sturgeon|paddlefish|gar|bowfin|eel|moray|tarpon|bonefish|anchovy|herring|sardine|carp|goldfish|koi|minnow|catfish|piranha|pacu|tetra|salmon|trout|pike|cod|anglerfish|frogfish|clownfish|anemonefish|damselfish|tang|surgeonfish|angelfish|butterflyfish|wrasse|parrotfish|blenny|goby|barracuda|tuna|mackerel|swordfish|marlin|flounder|sole|halibut|seahorse|pipefish|lionfish|scorpionfish|sea bass|grouper|snapper|grunt|cichlid|discus|oscar|gourami|betta|guppy|molly|platy|swordtail|fish/i.test(lower)) {
-    className = lower.includes('shark') || lower.includes('ray') || lower.includes('skate') || lower.includes('sawfish') 
-      ? 'Chondrichthyes' 
-      : 'Actinopterygii';
+    className = lower.includes('shark') || lower.includes('ray') || lower.includes('skate') || lower.includes('sawfish') ? 'Chondrichthyes' : 'Actinopterygii';
     iconicGroup = 'Fishes';
     orderName = className === 'Chondrichthyes' ? 'Carcharhiniformes' : 'Perciformes';
   } else if (/butterfly|moth|caterpillar|beetle|ladybug|firefly|ant|bee|wasp|hornet|fly|mosquito|dragonfly|damselfly|mantis|grasshopper|cricket|katydid|cicada|termite|spider|tarantula|scorpion|crab|hermit crab|lobster|crayfish|shrimp|krill|barnacle|octopus|squid|cuttlefish|nautilus|snail|slug|nudibranch|conch|clam|mussel|oyster|scallop|jellyfish|coral|anemone|starfish|sea star|sea urchin|sea cucumber|sponge|worm/i.test(lower)) {
-    phylum = lower.includes('octopus') || lower.includes('squid') || lower.includes('snail') || lower.includes('clam')
-      ? 'Mollusca'
-      : (lower.includes('crab') || lower.includes('lobster') || lower.includes('spider') || lower.includes('beetle') ? 'Arthropoda' : 'Invertebrata');
+    phylum = lower.includes('octopus') || lower.includes('squid') || lower.includes('snail') || lower.includes('clam') ? 'Mollusca' : (lower.includes('crab') || lower.includes('lobster') || lower.includes('spider') || lower.includes('beetle') ? 'Arthropoda' : 'Invertebrata');
     className = lower.includes('butterfly') || lower.includes('beetle') || lower.includes('ant') ? 'Insecta' : 'Invertebrata';
     iconicGroup = 'Invertebrates';
   } else if (/tree|pine|oak|maple|birch|willow|palm|fern|moss|cactus|succulent|orchid|rose|lily|tulip|sunflower|lotus|bamboo|cypress|redwood|sequoia|cedar|spruce|fir|mushroom|toadstool|flower|plant/i.test(lower)) {
@@ -138,7 +128,6 @@ export function createCustomTaxon(rawQuery: string): Taxon {
   }
 
   const slug = lower.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-
   const taxon: Taxon = {
     id: `col-offline-${slug}-${Date.now().toString(36)}`,
     scientificName,
@@ -161,13 +150,9 @@ export function createCustomTaxon(rawQuery: string): Taxon {
 
 export async function searchTaxonomy(query: string): Promise<Taxon[]> {
   const trimmed = query.trim();
-  if (!trimmed || trimmed.length < 2) {
-    return [];
-  }
+  if (!trimmed || trimmed.length < 2) return [];
 
   const q = trimmed.toLowerCase();
-
-  // Combine static curated dataset + offline Catalogue of Life cache
   const cachedCol = getColOfflineCache();
   const allOfflineTaxa = [...curatedTaxa, ...cachedCol];
 
@@ -197,31 +182,40 @@ export async function searchTaxonomy(query: string): Promise<Taxon[]> {
 
   let results: Taxon[] = [];
 
-  // If browser is offline, search local curated database + CoL offline cache
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    results = searchLocal();
+    // The complete CoL index is shipped as compressed static shards and precached by the SW.
+    // Search it first, then merge the existing curated/common-name cache for richer results.
+    const fullOffline = await searchOfflineCatalogue(trimmed);
+    results = [...fullOffline, ...searchLocal()];
   } else {
-    // Try server Catalogue of Life API proxy when online
     try {
       const res = await fetch(`/api/taxonomy/search?q=${encodeURIComponent(trimmed)}`);
       if (res.ok) {
         const data = await res.json();
         if (data && Array.isArray(data.results) && data.results.length > 0) {
           results = data.results;
-          // Automatically cache retrieved Catalogue of Life species for future offline use
           saveToColOfflineCache(results);
         }
       }
     } catch (e) {
       console.warn('Network taxonomy search failed, falling back to offline CoL database:', e);
+      results = await searchOfflineCatalogue(trimmed);
     }
 
     if (results.length === 0) {
-      results = searchLocal();
+      const fullOffline = await searchOfflineCatalogue(trimmed);
+      results = [...fullOffline, ...searchLocal()];
     }
   }
 
-  // Guarantee that ANY term entered generates an immediate Catalogue of Life taxon if not already matched
+  const seen = new Set<string>();
+  results = results.filter(t => {
+    const key = t.scientificName.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 20);
+
   const exactMatch = results.some(
     t => t.vernacularName.toLowerCase() === q || t.scientificName.toLowerCase() === q
   );
@@ -233,5 +227,3 @@ export async function searchTaxonomy(query: string): Promise<Taxon[]> {
 
   return results;
 }
-
-
