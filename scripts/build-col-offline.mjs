@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -32,9 +32,7 @@ function canonicalSpeciesName(label) {
     .replace(/^species\s*[:=-]?\s*/i, '')
     .trim();
 
-  // TextTree properties can follow the taxon label. Keep the scientific-name portion.
   value = value.split(/\s+[|;]\s+/)[0].trim();
-
   const match = value.match(/^([A-Z][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+)\s+([a-z][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+)(?:\s+(?:subsp\.?|var\.?|f\.?|forma)\s+([a-z][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+))?/);
   if (!match) return null;
 
@@ -47,9 +45,6 @@ function canonicalSpeciesName(label) {
 function likelySpecies(label) {
   const name = canonicalSpeciesName(label);
   if (!name) return null;
-
-  // A species-level scientific name has a lowercase second component. This deliberately
-  // excludes genus/family/order labels while retaining binomials and common infraspecific names.
   const parts = name.split(/\s+/);
   if (parts.length < 2 || !/^[a-z]/.test(parts[1])) return null;
   return name;
@@ -66,16 +61,22 @@ async function main() {
     await mkdir(extractDir, { recursive: true });
     execFileSync('unzip', ['-q', zipPath, '-d', extractDir]);
 
-    const files = await readdir(extractDir, { recursive: true });
-    const textFiles = files
-      .filter(file => typeof file === 'string' && /\.(txt|tree|texttree)$/i.test(file))
-      .map(file => path.join(extractDir, file));
+    // TextTree archives have changed their inner filename over time. Rather than relying
+    // on an extension, select the largest extracted regular file, which is the tree data.
+    const extractedFiles = execFileSync('find', [extractDir, '-type', 'f', '-printf', '%s %p\\n'], { encoding: 'utf8' })
+      .trim()
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map(line => {
+        const separator = line.indexOf(' ');
+        return { size: Number(line.slice(0, separator)), path: line.slice(separator + 1) };
+      })
+      .sort((a, b) => b.size - a.size);
 
-    if (textFiles.length === 0) {
-      throw new Error('No TextTree file was found in the Catalogue of Life archive.');
-    }
+    const treeFile = extractedFiles[0]?.path;
+    if (!treeFile) throw new Error('No TextTree data file was found in the Catalogue of Life archive.');
 
-    const treeFile = textFiles.sort()[0];
+    console.log(`Parsing TextTree file: ${path.basename(treeFile)} (${(extractedFiles[0].size / 1024 / 1024).toFixed(1)} MiB)`);
     const input = await readFile(treeFile, 'utf8');
     const shards = new Map();
     const seen = new Set();
@@ -97,6 +98,10 @@ async function main() {
         rank: 'species',
         source: 'Catalogue of Life (offline)'
       });
+    }
+
+    if (seen.size < 100000) {
+      throw new Error(`Catalogue of Life parser produced only ${seen.size.toLocaleString()} species records; refusing to deploy an incomplete offline index.`);
     }
 
     await rm(PUBLIC_DIR, { recursive: true, force: true });
