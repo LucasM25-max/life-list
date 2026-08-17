@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Observation, Taxon, WildStatus, VenueType, TripRecord, Coordinates } from '../types';
 import { SpeciesImage } from './SpeciesImage';
-import { searchTaxonomy } from '../services/taxonomyApi';
+import { searchTaxonomy, createCustomTaxon } from '../services/taxonomyApi';
 import { CameraCaptureModal } from './CameraCaptureModal';
 import { processImageFile } from '../utils/imageUtils';
 import { useDeviceGps } from '../hooks/useDeviceGps';
@@ -237,6 +237,18 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     setSearchQuery('');
   };
 
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (searchResults.length > 0) {
+        handleSelectTaxon(searchResults[0]);
+      } else if (searchQuery.trim()) {
+        const custom = createCustomTaxon(searchQuery.trim());
+        handleSelectTaxon(custom);
+      }
+    }
+  };
+
   // Toggle or append tag directly inside the notes text
   const toggleTagInNotes = (tag: string) => {
     const formattedTag = `#${tag.replace(/\s+/g, '')}`;
@@ -401,7 +413,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search common or scientific name..."
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Search common or scientific name (e.g. Red Panda, Gyrfalcon)..."
                 className="w-full bg-[#faf9f6] border border-[#d8d0c4] focus:border-[#2e4a36] focus:bg-white rounded-md pl-9 pr-8 py-2 text-xs text-[#1f241d] placeholder-[#828d7e] focus:outline-none focus:ring-1 focus:ring-[#2e4a36]"
               />
               {isSearching && (

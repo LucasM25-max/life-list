@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Observation, Taxon, WildStatus, EnclosureRecord, EnclosureSpecies, VenueType, TripRecord, Coordinates } from '../types';
 import { SpeciesImage } from './SpeciesImage';
-import { searchTaxonomy } from '../services/taxonomyApi';
+import { searchTaxonomy, createCustomTaxon } from '../services/taxonomyApi';
 import { CameraCaptureModal } from './CameraCaptureModal';
 import { processImageFile } from '../utils/imageUtils';
 import { computeCentroid, formatCoordinates } from '../utils/geoUtils';
@@ -327,18 +327,23 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (searchResults.length === 0) return;
-
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex(prev => (prev + 1) % searchResults.length);
+      if (searchResults.length > 0) {
+        setSelectedIndex(prev => (prev + 1) % searchResults.length);
+      }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSelectedIndex(prev => (prev - 1 + searchResults.length) % searchResults.length);
+      if (searchResults.length > 0) {
+        setSelectedIndex(prev => (prev - 1 + searchResults.length) % searchResults.length);
+      }
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (searchResults[selectedIndex]) {
+      if (searchResults.length > 0 && searchResults[selectedIndex]) {
         addTaxonToActiveEnclosure(searchResults[selectedIndex]);
+      } else if (searchQuery.trim().length > 0) {
+        const custom = createCustomTaxon(searchQuery.trim());
+        addTaxonToActiveEnclosure(custom);
       }
     }
   };
