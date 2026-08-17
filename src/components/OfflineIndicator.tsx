@@ -42,7 +42,7 @@ export const OfflineIndicator: React.FC = () => {
     <div className="bg-[#1f241d] text-[#e6dfd3] px-3 py-1.5 text-xs text-center font-medium flex items-center justify-center gap-2 border-b border-[#323d30] shadow-xs animate-in fade-in duration-200">
       <WifiOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />
       <span>
-        <strong>Offline Mode Active:</strong> All local life listing, field trips, enclosure tracking & taxonomy work 100% offline. (AI features require network)
+        <strong>Offline Mode Active:</strong> Full Catalogue of Life taxonomy search, field trips, enclosure logging & life list tracking work 100% offline. (AI features require network)
       </span>
     </div>
   );
