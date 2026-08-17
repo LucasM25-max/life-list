@@ -32,14 +32,17 @@ function canonicalSpeciesName(label) {
     .replace(/^species\s*[:=-]?\s*/i, '')
     .trim();
 
-  value = value.split(/\s+[|;]\s+/)[0].trim();
-  const match = value.match(/^([A-Z][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+)\s+([a-z][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+)(?:\s+(?:subsp\.?|var\.?|f\.?|forma)\s+([a-z][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+))?/);
+  // TextTree variants may include IDs, rank markers, subgenera and hybrid markers before
+  // the canonical name. Find the first valid genus + species epithet pair instead of
+  // assuming the scientific name begins at column 1.
+  const match = value.match(/(?:^|\s)(×?)([A-Z][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+)(?:\s+\([^)]*\))?\s+(?:×\s*)?([a-z][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+)(?:\s+(?:subsp\.?|ssp\.?|var\.?|f\.?|forma)\s+([a-z][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+))?(?=\s|$)/);
   if (!match) return null;
 
-  const genus = match[1];
-  const epithet = match[2];
-  const infra = match[3];
-  return infra ? `${genus} ${epithet} ${infra}` : `${genus} ${epithet}`;
+  const hybridGenus = match[1] || '';
+  const genus = match[2];
+  const epithet = match[3];
+  const infra = match[4];
+  return infra ? `${hybridGenus}${genus} ${epithet} ${infra}` : `${hybridGenus}${genus} ${epithet}`;
 }
 
 function likelySpecies(label) {
@@ -61,8 +64,6 @@ async function main() {
     await mkdir(extractDir, { recursive: true });
     execFileSync('unzip', ['-q', zipPath, '-d', extractDir]);
 
-    // TextTree archives have changed their inner filename over time. Rather than relying
-    // on an extension, select the largest extracted regular file, which is the tree data.
     const extractedFiles = execFileSync('find', [extractDir, '-type', 'f', '-printf', '%s %p\\n'], { encoding: 'utf8' })
       .trim()
       .split(/\r?\n/)
@@ -90,17 +91,18 @@ async function main() {
       if (seen.has(key)) continue;
       seen.add(key);
 
-      const bucket = key[0];
-      if (!shards.has(bucket)) shards.set(bucket, []);
-      shards.get(bucket).push({
+      const bucket = key.replace(/^×/, '')[0];
+      if (!/^[a-z]$/i.test(bucket)) continue;
+      if (!shards.has(bucket.toLowerCase())) shards.set(bucket.toLowerCase(), []);
+      shards.get(bucket.toLowerCase()).push({
         scientificName,
-        genus: scientificName.split(/\s+/)[0],
+        genus: scientificName.split(/\s+/)[0].replace(/^×/, ''),
         rank: 'species',
         source: 'Catalogue of Life (offline)'
       });
     }
 
-    if (seen.size < 100000) {
+    if (seen.size < 2000000) {
       throw new Error(`Catalogue of Life parser produced only ${seen.size.toLocaleString()} species records; refusing to deploy an incomplete offline index.`);
     }
 
