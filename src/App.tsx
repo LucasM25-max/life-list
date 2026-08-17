@@ -13,6 +13,7 @@ import {
   saveActiveTrip
 } from './utils/storage';
 import { Header } from './components/Header';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { FilterBar } from './components/FilterBar';
 import { ActiveTripBar } from './components/ActiveTripBar';
 import { StartTripModal } from './components/StartTripModal';
@@ -434,6 +435,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f9f8f5] flex flex-col selection:bg-[#2e4a36] selection:text-white pb-20 md:pb-8">
+      {/* Offline Status Indicator Banner */}
+      <OfflineIndicator />
+
       {/* Streamlined Sticky Header */}
       <Header
         observations={observations}

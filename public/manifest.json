@@ -1,0 +1,16 @@
+{
+  "name": "Life — Wildlife & Zoo Life List",
+  "short_name": "Life",
+  "description": "Offline-first life list tracker for zoo and wildlife enthusiasts.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1f241d",
+  "theme_color": "#2e4a36",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

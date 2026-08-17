@@ -60,6 +60,11 @@ export async function fetchSpeciesImage(scientificName: string): Promise<string 
     return imageCache[key];
   }
 
+  // If offline, return null immediately
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return null;
+  }
+
   if (pendingRequests.has(key)) {
     return pendingRequests.get(key)!;
   }

@@ -56,6 +56,12 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
     
     let isMounted = true;
     const fetchSummary = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setSummary("AI species facts require an internet connection. All local taxonomy & field logs are available offline.");
+        setLoadingSummary(false);
+        return;
+      }
+
       setLoadingSummary(true);
       setSummary(null);
       try {
@@ -67,15 +73,24 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
         const data = await res.json();
         if (isMounted && data.summary) {
           setSummary(data.summary);
+        } else if (isMounted) {
+          setSummary("Species overview unavailable.");
         }
       } catch (error) {
-        console.error("Failed to fetch summary", error);
+        if (isMounted) {
+          setSummary("AI species facts require an internet connection. All local taxonomy & field logs are available offline.");
+        }
       } finally {
         if (isMounted) setLoadingSummary(false);
       }
     };
 
     const fetchImages = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setLoadingImages(false);
+        return;
+      }
+
       setLoadingImages(true);
       setWikiImages([]);
       try {
@@ -85,7 +100,7 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
           setWikiImages(data.images);
         }
       } catch (error) {
-        console.error("Failed to fetch images", error);
+        // Silently catch offline image fetch failure
       } finally {
         if (isMounted) setLoadingImages(false);
       }

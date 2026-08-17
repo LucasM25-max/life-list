@@ -197,6 +197,12 @@ export function ZooSignScannerModal({
     setStep('processing');
     setErrorMessage(null);
 
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setErrorMessage('AI Sign Scanning requires an internet connection. You can manually enter species below!');
+      setStep('review');
+      return;
+    }
+
     try {
       const res = await fetch('/api/scan-sign', {
         method: 'POST',

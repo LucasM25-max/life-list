@@ -432,6 +432,13 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
     setScanStep('processing');
     setFormError(null);
 
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setFormError('AI Sign Scanning requires an internet connection. Type species names directly into your enclosure below!');
+      setScanStep('capture');
+      setIsScanSignActive(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/scan-sign', {
         method: 'POST',
